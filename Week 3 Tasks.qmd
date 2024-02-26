@@ -1,0 +1,76 @@
+---
+title: "Week Introduction to SEM"
+format: html
+editor: visual
+---
+
+## 
+
+## Week 3. Introduction to SEM activity
+
+The following code will generate 5 variables, **reading, writing, maths, family, and individual** that represents reading ability, writing ability, maths ability, family average education level achieved and individual education level achieved.
+
+```{r}
+set.seed(123456) 
+reading <- rnorm(250)
+writing <- 0.25*reading + rnorm(250)   
+maths <- 0.35*writing + rnorm(250)  
+family <- 0.35*reading + 0.3*writing + 0.4*maths + rnorm(250)  
+individual <- 0.4*family + rnorm(250)    
+df <- data.frame(reading=reading, writing=writing, maths=maths, family=family, individual=individual)
+```
+
+**Task 1:** We want you to write the appropriate code in R using lavaan syntax to specify the model as it was discussed in the lecture part of today's workshop:
+
+![](model2.JPG)
+
+**Task 2:** Once you do that run the appropriate analysis and acquire fit indices in order to assess the model. What are your conclusions?
+
+**Task 3:** How would your fit indices changes if your sample size changed from 250 to only 30 participants? Change your initial code to recreate the variables with only 30 observations, rerun the analysis and see how the fit indices change. Was that change in line with your original thinking? Tip: create the new variables with 30 observations and add them to a different dataframe df2.
+
+You can use the code snipet below to carry out your work:
+
+```{r}
+library(lavaan)
+library(semPlot)
+
+#parallel and serial mediation model
+model <- ' # 
+            
+            
+           # paths
+             family ~ reading + writing + maths
+             individual ~ family
+          
+          #(co)variances
+          reading ~~ writing
+          reading ~~ maths
+          writing ~~ maths
+         '
+
+
+
+#Fit model
+model_fit1 <- sem(model, data = df)
+summary(model_fit1, fit.measures = T)
+
+
+
+
+#model 2
+reading <- rnorm(30)
+writing <- 0.25*reading + rnorm(30)   
+maths <- 0.35*writing + rnorm(30)  
+family <- 0.35*reading + 0.3*writing + 0.4*maths + rnorm(30)  
+individual <- 0.4*family + rnorm(30)    
+df2 <- data.frame(reading=reading, writing=writing, maths=maths, family=family, individual=individual)
+
+
+
+#Fit model
+model_fit2 <- sem(model, data = df2)
+summary(model_fit2, fit.measures = T)
+
+
+
+```

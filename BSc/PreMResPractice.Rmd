@@ -1,0 +1,316 @@
+---
+title: "Practice"
+author: "CM793"
+date: "2023-07-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(knitr)
+library(dplyr)
+library(readxl)
+library(readr)
+library(tidyr)
+library(plyr)
+library(lavaan)
+library(lavaanPlot)
+library(ltm)
+library(rmarkdown)
+library(apaTables)
+library(BayesFactor)
+library(parameters)
+
+```
+
+```{r}
+data <- readxl::read_excel('/cloud/project/data/newdiss.xlsx')
+
+#Exclude participants that didn't finish or didn't consent
+data_FinConsent <- dplyr::filter(data, data$Q2=='1,2,3,4,5,6', data$Q34=='1')
+
+#Change gender labels
+data_FinConsent$Q5 <- recode(data_FinConsent$Q5, 'Female'=1, 'female'=1,'woman'=1, 'Woman'=1, 'a woman'=1, 'Feminine-presenting / Female'=1, 'British'=1, 'Trans female'=1, 'fensle' =1, 'Male'=2, 'male'=2,'man'=2, 'a man'=2, 'Non-binary'=3, 'non-binary'=3, 'Non binary'=3, 'non binary'=3, 'Non-Binary' =3)
+
+#encode scenarios - 17= , 19= , 20= , 21= .
+data_FinConsent$Block6_DO <- recode(data_FinConsent$Block6_DO, 'Q17|Q23'= 17, 'Q19|Q23' = 19, 'Q20|Q23' = 20, 'Q21|Q23' = 21)
+
+#Set as numeric
+final_data <- data_FinConsent %>% mutate_if(is.character, as.numeric)
+
+#reverse code for importance scales
+columnstoreverse = c(66:67, 71:72, 76:77)
+final_data[, columnstoreverse] = 8 - final_data[, columnstoreverse]
+
+
+```
+
+```{r}
+####### Paricipant info #######
+#age - exclude px 4 and 68 as age input is na
+age <- final_data[-4,]
+age <- age[-68,]
+
+
+#age mean
+age %>% 
+  dplyr::summarise(
+    Mean_age = mean(Q4),
+    SD_age = sd(Q4),
+    Number = dplyr::n()
+  )
+#age by gender; 1=female, 2=male, 3=non-binary
+age %>% 
+  dplyr::group_by(Q5) %>%
+  dplyr::summarise(
+    mean_age = mean(Q4),
+    sd_age = sd(Q4),
+    number = dplyr::n()
+  )
+#######-#######
+
+#list nationality 
+table(data_FinConsent$Q6)
+
+#list country of residence 
+table(data_FinConsent$Q7)
+```
+
+```{r}
+#Remember to reverse code to avoid negatives
+
+#cronbach's alpha 
+essentialism <- data.frame(final_data[,c(19,22,24,27,30,32,34,36)])
+ltm::cronbach.alpha(essentialism, na.rm=TRUE)
+
+distinct <- data.frame(final_data[,c(105,106)])
+ltm::cronbach.alpha(distinct, na.rm=TRUE)
+
+sensation <- data.frame(final_data[,c(84:103)])
+ltm::cronbach.alpha(sensation, na.rm=TRUE)
+
+liking <- data.frame(final_data[,c(81:83)])
+ltm::cronbach.alpha(liking, na.rm=TRUE)
+
+problemcoping <- data.frame(final_data[,c(39,44,47,49,51,54,60,62)])
+ltm::cronbach.alpha(problemcoping, na.rm=TRUE)
+
+emotioncoping <- data.frame(final_data[,c(42,46,50,52,55,57,58,59,61,63,64,65)])
+ltm::cronbach.alpha(emotioncoping, na.rm=TRUE)
+
+avoidantcoping <- data.frame(final_data[,c(38,40,41,43,45,48,53,56)])
+ltm::cronbach.alpha(avoidantcoping, na.rm=TRUE)
+
+genderimport <- data.frame(final_data[,c(71:74)])
+ltm::cronbach.alpha(genderimport, na.rm=TRUE)
+
+ageimport <- data.frame(final_data[,c(66:69)])
+ltm::cronbach.alpha(ageimport, na.rm=TRUE)
+
+nationalityimport <- data.frame(final_data[,c(76:79)])
+ltm::cronbach.alpha(nationalityimport, na.rm=TRUE)
+```
+
+```{r}
+#distinctiveness threat - mean
+final_data$threat1 <-apply(final_data[,c(105,106)],1,mean, na.rm=T, digits=3)
+
+#sensations threat -mean
+final_data$threat2 <-apply(final_data[,c(84:103)],1,mean, na.rm=T, digits=3)
+
+#identity mean for age, gender, nationality
+final_data$identityA <-apply(final_data[,c(66:69)],1,mean, na.rm=T, digits=3)
+final_data$identityG <-apply(final_data[,c(71:74)],1,mean, na.rm=T, digits=3)
+final_data$identityN <-apply(final_data[,c(76:79)],1,mean, na.rm=T, digits=3)
+
+#essentialism - mean
+final_data$essentialism <-apply(final_data[,c(19,22,24,27,30,32,34,36)],1,mean, na.rm=T, digits=3)
+
+#coping style: problem focused - mean
+final_data$coping1 <-apply(final_data[,c(39,44,47,49,51,54,60,62)],1,mean, na.rm=T, digits=3)
+
+#coping style: emotion focused - mean
+final_data$coping2 <-apply(final_data[,c(42,46,50,52,55,57,58,59,61,63,64,65)],1,mean, na.rm=T, digits=3)
+
+#coping style: avoidant - mean
+final_data$coping3 <-apply(final_data[,c(38,40,41,43,45,48,53,56)],1,mean, na.rm=T, digits=3)
+
+#Liking - mean
+final_data$liking <-apply(final_data[,c(81:83)],1,mean, na.rm=T, digits=3)
+
+#Tidying columns
+data_rel <- subset(final_data[ , c(5, 13:14, 112:122)])
+colnames(data_rel)[2] <- "age"
+colnames(data_rel)[3] <- "gender"
+colnames(data_rel)[4] <- "scenario"
+
+#Create trans/conforming scenarios
+data_rel$transcis <- recode(data_rel$scenario, '17'= 'cis', '19' = 'trans', '20' = 'cis', '21' = 'trans')
+data_rel$connoncon <- recode(data_rel$scenario, '17'= 'conform', '19' = 'conform', '20' = 'noncon', '21' = 'noncon')
+
+```
+
+```{r}
+#GLM testing
+
+lm1 <- lm(liking ~ threat1 * identityG, data= data_rel, na.action= na.exclude)
+summary(lm1)
+
+lm2 <- lm(threat1 ~ essentialism * scenario, data= data_rel, na.action= na.exclude)
+summary(lm2)
+```
+
+```{r}
+#Ancova
+
+#Threat for each scenario, controlling for essentialism (covariate)
+
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(broom)
+
+#Convert scenario to factor
+data_rel$scenario <- as.factor(data_rel$scenario)
+
+#Linearity assumptions
+ggscatter(
+  data_rel, x = "essentialism", y = "threat1",
+  color = "scenario", add = "reg.line"
+  )+
+  stat_regline_equation(
+    aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~"), color = scenario)
+    )
+
+#Homogeniety of regression slopes assumptions - Want interaction to be non significant - currently failing
+data_rel %>% anova_test(threat1 ~ scenario*essentialism)
+
+#Non-normaility - want non-significant shapiro test -currently failing
+test <- lm(threat1 ~ scenario + essentialism, data= data_rel, na.action= na.exclude)
+
+model.metrics <- augment(test) %>%
+  select(-.hat, -.sigma, -.fitted, -.se.fit) # Remove details
+head(model.metrics, 3)
+
+shapiro_test(model.metrics$.resid)
+
+#Homogeneity of variances assumptions - Want to be non sig - Succeeds
+model.metrics %>% levene_test(.resid ~ scenario)
+
+#Outliers assumptions - want no results - succeeding
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+
+#Ancova Test
+res.aov <- data_rel %>% anova_test(threat1 ~ essentialism + scenario)
+get_anova_table(res.aov)
+
+#Post hoc tests
+# Pairwise comparisons
+library(emmeans)
+pwc <- data_rel %>% 
+  emmeans_test(
+    threat1 ~ scenario, covariate = essentialism,
+    p.adjust.method = "bonferroni"
+    )
+pwc
+
+# Display the adjusted means of each group
+# Also called as the estimated marginal means (emmeans)
+get_emmeans(pwc)
+
+#An ANCOVA was run to determine the effect of target scenario on the threat score after controlling for essentialism scores.
+#After adjustment for essentialism score, there was a statistically significant difference in threat score between the groups, F(2, 41) = 218.63, p < 0.0001. (Not correct numbers)
+#Post hoc analysis was performed with a Bonferroni adjustment. The mean threat was statistically significantly greater in grp1 (16.4 +/- 0.15) compared to the grp2 (15.8 +/- 0.12) and grp3 (13.5 +/_ 0.11), p < 0.001. (and grp4 not correct numbers)
+```
+
+```{r}
+#Multiple regression with categorical predictor groups
+#Dummy coding?
+#Because of BOTH continuous and categorical predictors?
+
+library(tidyverse)
+
+#Convert scenario to factor
+data_rel$transcis <- as.factor(data_rel$transcis)
+#Look at how r auto-dummy codes
+contrasts(data_rel$transcis)
+
+# 0 if target is cis
+# 1 if target is trans
+
+# b0 if target is cis
+# b0 + b1 if target is trans
+
+# The coefficients can be interpreted as follow:
+# b0 is the average threat for cis targets,
+# b0 + b1 is the average threat for trans targets,
+# and b1 is the average difference in threat between cis and trans targets.
+
+# Compute the model
+dc_model <- lm(threat1 ~ transcis, data = data_rel)
+summary(dc_model)$coef
+#Average threat for Cis target (intercept) = 2.1
+#Average threat for trans target (transcistrans) = .002 + 2.1 
+#Difference in threat = .002
+
+# Compute the model
+dc_model2 <- lm(threat1 ~ connoncon, data = data_rel)
+summary(dc_model2)$coef
+#Average threat for conforming target (intercept) = 2.6
+#Average threat for nonconforming target (connonconnoncon) = -.84 + 2.6
+#Difference in threat = .84
+
+#To re-level trans to be "0"- Not needed here
+#data_rel <- data_rel %>% mutate(transcis = relevel(transcis, ref = "trans"))
+
+
+#Attempting to do dummy coding including continuous predictor
+dc_model3 <- lm(threat1 ~ transcis*essentialism, data = data_rel)
+summary(dc_model3)$coef
+```
+
+```{r}
+# 2-way Anova
+#Because of just categorical predictors?
+
+
+library("dplyr")
+library("ggpubr")
+
+#Convert gender to factor
+data_rel$gender <- as.factor(data_rel$gender)
+
+# Box plot with multiple groups
+# Plot threat by transcis
+# Color box plot by a second group: gender
+ggboxplot(data_rel, x = "connoncon", y = "threat1", color = "gender",
+          palette = c("#00AFBB", "#E7B800", "red3"))
+
+# Line plots with multiple groups
+ggline(data_rel, x = "transcis", y = "threat1", color = "gender",
+       add = c("mean_se", "dotplot"),
+       palette = c("#00AFBB", "#E7B800", "red3"))
+
+# Two-way ANOVA with interaction effect
+aov1 <- aov(threat1 ~ connoncon * gender, data = data_rel)
+summary(aov1)
+
+#Summary of each combination of groups - NOT WORKING??
+require("dplyr")
+group_by(data_rel, connoncon, gender) %>%
+  summarise(
+    count = n(),
+    mean = mean(threat1, na.rm = TRUE),
+    sd = sd(threat1, na.rm = TRUE)
+  )
+
+#Pairwise comparisons for variables of more than 2 levels (if previous p value was sig)
+TukeyHSD(aov1, which = "gender")
+
+```
+

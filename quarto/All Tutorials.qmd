@@ -1,0 +1,825 @@
+---
+title: "All Tutorials"
+format: html
+editor: visual
+---
+
+```{r}
+df <- readxl::read_excel('/cloud/project/data/FakeSussexLoveData.xlsx')
+colnames(df)[1] <- "Participant"
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+```
+
+# Discovr_02 Histograms and Summary Statistics
+
+## Frequency tables
+
+```{r}
+#Frequency table
+freq_tbl <- df |>
+  dplyr::group_by(`Asked at gunpoint`) |> 
+  dplyr::summarise(
+    frequency = n()
+  )
+freq_tbl
+
+
+group_freq_dist <- df |> 
+  dplyr::mutate(
+    group = ggplot2::cut_width(Participant, 2) #splits participants into groups of 2 and craetes new variable indicating which group each row falls into
+    ) 
+group_freq_dist
+
+#Combine both above to show frequency of specific varaiable (participant) by new groups
+gp_freq_dist <- df |> 
+  dplyr::mutate(
+    group = ggplot2::cut_width(Participant, 4)
+    ) |> 
+  dplyr::group_by(group) |> 
+  dplyr::summarise(
+    frequency = n()
+  )
+gp_freq_dist
+
+#Add in relative frequency and percent variables
+new_dist <- df |> 
+  dplyr::mutate(
+    group = ggplot2::cut_width(Participant, 4)
+    ) |> 
+  dplyr::group_by(group) |> 
+  dplyr::summarise(
+    frequency = n()
+  ) |> 
+  dplyr::mutate(
+    relative_freq = frequency/sum(frequency),
+    percent = relative_freq*100
+  )
+new_dist
+```
+
+## Histograms
+
+```{r}
+#Histograms
+library(ggplot2)
+eddie_tib <- here::here("data/eddiefy.csv") |> readr::read_csv()
+
+hist_tib <- eddie_tib |> 
+  dplyr::select(danceability) #Creates single factor tib
+#Not actually needed but useful - can select multiple factors- not used below
+
+ggplot2::ggplot(eddie_tib, aes(danceability)) +
+  geom_histogram(binwidth = 0.01, fill= '#8206FF', alpha = 0.5) + labs(y= 'Frequency', x = 'Danceabilility') + theme_dark()
+```
+
+## Summary tables
+
+```{r}
+#Summary Tables
+
+summary_tab <- fake_data |>
+  dplyr::summarise(
+    median =  median(teach_skill),
+    mean =  mean(teach_skill),
+    IQR = IQR(teach_skill),
+    variance = var(teach_skill),
+    std_dev = sd(teach_skill)
+    )
+summary_tab
+
+summary_tab |> 
+  knitr::kable(digits = 1,
+        caption = "Summary statistics for the Fake Data"
+        ) 
+
+datawizard::describe_distribution(fake_data) |> 
+  knitr::kable(digits = 2)
+```
+
+# Discovr_03 Confidence Intervals
+
+```{r}
+#Create tibble 
+pract_tib <- tibble::tibble(
+  variable1 = c(57, 40, 103, 234, 93, 53, 116, 98, 108, 121, 22), variable2 = c(20,27,19,23,21,15,25,14,26,21,19)
+)
+pract_tib
+
+#Confidence intervals
+ggplot2::mean_cl_normal(pract_tib$variable1, conf.int = 0.95)
+ggplot2::mean_cl_boot(pract_tib$variable1) #Bootsreapped, ** non-parametric samples?
+
+#Summary table with conf ints
+pract_summ <- pract_tib |>
+  dplyr::summarize(
+    Mean =  ggplot2::mean_cl_normal(variable1)$y,
+    `95% CI Lower` = ggplot2::mean_cl_normal(variable1)$ymin,
+    `95% CI Upper` = ggplot2::mean_cl_normal(variable1)$ymax,
+    median =  median(variable1),
+    range = max(variable1) - min(variable1),
+    `lower quartile` = quantile(variable1, probs = 0.25),
+    `upper quartile` = quantile(variable1, probs = 0.75),
+    IQR = IQR(variable1),
+    var = var(variable1),
+    sd = sd(variable1)
+    )
+
+pract_summ |> 
+  knitr::kable(caption = "Summary statistics for the Practice data",
+               align = 'c', #this argument centre aligns the columns
+               digits = 2)
+
+#If this confidence interval is one of the 95% that contains the population value then the mean number of followers in the population lies between 56.85 and 133.15.
+```
+
+```{r}
+#Conf Int Summary table with bootsrapped (robust) samples
+pract_summ_boot <- pract_tib |>
+  dplyr::summarize(
+    Mean =  ggplot2::mean_cl_boot(variable1)$y,
+    `95% CI Lower` = ggplot2::mean_cl_boot(variable1)$ymin,
+    `95% CI Upper` = ggplot2::mean_cl_boot(variable1)$ymax,
+    median =  median(variable1),
+    range = max(variable1) - min(variable1),
+    `lower quartile` = quantile(variable1, probs = 0.25),
+    `upper quartile` = quantile(variable1, probs = 0.75),
+    IQR = IQR(variable1),
+    var = var(variable1),
+    sd = sd(variable1)
+    )
+
+pract_summ_boot |> 
+  knitr::kable(caption = "Bootsrapped summary statistics for the practice data",
+               align = 'c', #this argument centre aligns the columns
+               digits = 2)
+```
+
+```{r}
+#summary with cont int using data wizard
+datawizard::describe_distribution(pract_tib, ci = 0.95, iterations = 500) |> 
+  knitr::kable(digits = 2, align = 'c')
+```
+
+# Discovr_05 Visualizing Data - ggplot
+
+```{r}
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+
+```
+
+## Box whisker plots
+
+```{r}
+#Box whisker plots
+plot1 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness, colour = favourite_movie))+
+  geom_boxplot() +  
+  labs(x = "Gender", y = "Helpfulness") +
+  theme_minimal()
+
+plot1
+```
+
+```{r}
+#With extras ie vertical
+plot2 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness))+
+  geom_boxplot() +  
+  labs(x = "Gender", y = "helpfullness") +
+  facet_wrap(~favourite_movie, ncol = 1) +
+  theme_minimal()
+
+plot2
+```
+
+## Mean Plots
+
+```{r}
+#Plotting means
+plot3 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness, colour = favourite_movie))+
+  stat_summary(fun = "mean", geom = "point", size = 4, position = position_dodge(width = 0.9)) +  
+  labs(x = "Gender", y = "Helpfullness", colour = "Favourite Movie") +
+  coord_cartesian(ylim = c(0, 100)) +
+  scale_y_continuous(breaks = seq(0, 100, 10)) +
+  theme_minimal()
+```
+
+## Violin Plots
+
+```{r}
+#Violon Plots
+plot4 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness, colour = favourite_movie))+
+  stat_summary(fun = "mean", geom = "point", size = 4, position = position_dodge(width = 0.9)) +
+  geom_violin(alpha = 1) +
+  labs(x = "Gender", y = "Helpfulness", colour = "Favourite Movie") +
+  coord_cartesian(ylim = c(0, 100)) +
+  scale_y_continuous(breaks = seq(0, 100, 10)) +
+  theme_minimal()
+```
+
+## CI Plots
+
+```{r}
+#Confidence Intervals
+plot5 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness))+
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange") +  
+  labs(x = "Gender", y = "Helpfulness") +
+  coord_cartesian(ylim = c(0, 70)) +
+  scale_y_continuous(breaks = seq(0, 70, 10)) +
+  facet_wrap(~favourite_movie) +
+  theme_minimal()
+```
+
+## Scatter plots (grouped)
+
+```{r}
+#Scatter plots by group
+plot6 <- ggplot2::ggplot(fake_data, aes(helpfulness, teach_skill)) +
+  geom_point(colour = "#56B4E9", alpha = 0.6) +
+  geom_smooth(method = "lm", colour = "#E69F00", fill = "#E69F00") +
+  labs(x = "helpfulness", y = "teaching ablility") +
+  facet_wrap(~gender) +
+  theme_bw()
+```
+
+```{r}
+#Joint scatter plot
+plot7 <- ggplot2::ggplot(fake_data, aes(helpfulness, teach_skill, colour = gender, fill = gender))+
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm") +
+  coord_cartesian(ylim = c(0, 140)) +
+  scale_y_continuous(breaks = seq(0, 140, 10)) +
+  labs(x = "Helpfulness", y = "Teaching Ability") +
+  theme_bw()
+```
+
+# Discovr_08 GLM
+
+```{r}
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+
+```
+
+```{r}
+#Descriptive graphs
+GGally::ggscatmat(fake_data, columns = c("age", "stats_skill", "helpfulness", "teach_skill"))
+
+```
+
+# Discovr_06 Beast of Bias
+
+```{r}
+
+```
+
+# Discovr_09 T-tests
+
+```{r}
+#summary statistics
+fake_sum <- fake_data |> 
+  dplyr::group_by(gender) |> 
+  dplyr::summarize(
+    n = n(),
+    mean = mean(stats_skill),
+    ci_lower = ggplot2::mean_cl_normal(stats_skill)$ymin,
+    ci_upper = ggplot2::mean_cl_normal(stats_skill)$ymax
+  )
+
+fake_sum |> 
+  knitr::kable(digits = 2)
+```
+
+```{r}
+#Violin plots
+ggplot2::ggplot(fake_data, aes(gender, stats_skill)) +
+  geom_violin() +
+  stat_summary(fun.data = "mean_cl_normal") +
+  labs(x = "Gender", y = "Stats Skill") +
+  theme_minimal()
+```
+
+## T-test independant and paired
+
+```{r}
+#T-test
+
+#cut out 3rd gender >:(
+ttest_tib <- fake_data |> slice(-c(41:50))
+
+#independant t test
+indi_model <- t.test(stats_skill ~ gender,
+                    data = ttest_tib,
+                    paired = F,
+                    var.equal = FALSE,
+                    conf.level = 0.95,
+                    na.action = na.exclude)
+indi_model
+
+# Paired T test arranging by Px number
+paired_model <- ttest_tib |> 
+  dplyr::arrange(participant) |>
+  t.test(stats_skill ~ gender, data = _, paired = TRUE)
+paired_model
+
+#Confidence interval interpretation:
+#If this confidence interval is one of the 95% that contains the population value then the population value of the difference between group means lies between -1.97 to -0.54.
+```
+
+## Post-hoc
+
+```{r}
+#Post hoc effect sizes
+
+#glass_delta(). This function uses only the control group standard deviation so should be used when group standard deviations are very different (or you expect your experimental manipulation to affect both the mean and the standard deviation of scores). It will use the first level of the grouping variable as the control (in this case the no cloak group). Therefore, we could execute:
+
+#cohens_d(). This function uses (by default) the pooled standard deviation. d is the difference between two means expressed in standard deviation units. d can be computed using a control group standard deviation, the standard deviation of all scores or a pooled standard deviation.
+
+#hedges_g(). This function applies a correction to Cohen’s d that is less biased for samples less than about 20.
+
+effectsize::cohens_d(stats_skill ~ gender,
+                     data = ttest_tib,
+                     pooled_sd = TRUE,
+                     paired = FALSE)
+#For both: don't need to set paired to true, ever?
+effectsize::hedges_g(stats_skill ~ gender,
+                     data = ttest_tib,
+                     pooled_sd = TRUE,
+                     paired = FALSE)
+
+effectsize::glass_delta(stats_skill ~ gender,
+                        data = ttest_tib)
+```
+
+# Discovr_11 ANOVA alternatives
+
+## dummy coding
+
+```{r}
+#Dummy coding - requires significance correction
+#as factor
+fake_data$gender <- as.factor(fake_data$gender)
+
+#Summary ststistics
+# Solution
+fake_data |> 
+  dplyr::group_by(gender) |> 
+  dplyr::summarize(
+    mean = mean(stats_skill, na.rm = TRUE),
+    `95% CI lower` = mean_cl_normal(stats_skill)$ymin,
+    `95% CI upper` = mean_cl_normal(stats_skill)$ymax
+  ) |> 
+  knitr::kable(digits = 3) # to round values
+
+
+#Check levels
+levels(fake_data$gender)
+
+## Fit model
+fake_lm <- lm(stats_skill ~ gender, data = fake_data, na.action = na.exclude)
+
+#Overall fit
+anova(fake_lm) |> 
+  parameters::model_parameters(effectsize_type = "omega", partial=T) |> 
+  knitr::kable(digits = 3) # to round values
+#F statistic
+#It is the ratio of the variance in happiness explained by the model to the variance that is unexplained (the error).
+
+
+#Model parameters and CIs
+broom::tidy(fake_lm, conf.int = TRUE) |> 
+  knitr::kable(digits = 3) # to round values
+#estimates are just differences in means, really interested in p value
+
+```
+
+## contrast coding
+
+```{r}
+#contrast coding - does NOT require significance correction
+#as factor
+fake_data$gender <- as.factor(fake_data$gender)
+
+#Check levels
+levels(fake_data$gender)
+
+#Set contrasts
+man_vs_other <- c(-2/3, 1/3, 1/3)
+enby_vs_woman <- c(0, -1/2, 1/2)
+contrasts(fake_data$gender) <- cbind(man_vs_other, enby_vs_woman)
+contrasts(fake_data$gender) # This line prints the contrast weights so we can check them
+
+## Fit model
+fake_lm <- lm(stats_skill ~ gender, data = fake_data, na.action = na.exclude)
+
+#Overall fit
+anova(fake_lm) |> 
+  parameters::model_parameters(effectsize_type = "omega", partial=T) |> 
+  knitr::kable(digits = 3) # to round values
+#F statistic
+#It is the ratio of the variance in happiness explained by the model to the variance that is unexplained (the error).
+
+
+#Model parameters and CIs
+broom::tidy(fake_lm, conf.int = TRUE) |> 
+  knitr::kable(digits = 3) # to round values
+#estimates (tvalue) are just differences in means, really interested in p value
+
+
+```
+
+## Polynomial contrasts (trend analysis)
+
+```{r}
+#Polynomial contrasts
+#set contrast
+contrasts(fake_data$gender) <- contr.poly(3)
+
+#fit model
+fake_trend <- lm(stats_skill ~ gender, data = fake_data)
+
+anova(fake_trend) |> 
+  parameters::parameters(omega_squared = "raw") |> 
+  knitr::kable(digits = 3) #only necessary to round values
+
+broom::tidy(fake_trend, conf.int = TRUE) |> 
+  knitr::kable(digits = 3) #only necessary to round values
+```
+
+## Post-hoc tests
+
+```{r}
+#Post-hoc tests
+
+modelbased::estimate_contrasts(fake_lm, contrast = "gender", p_adjust = "bonferroni") |>
+   knitr::kable(digits = 3) #to round values
+```
+
+## Cohen's D
+
+```{r}
+#  Us ethe sample code to compare the control group with the 15-minute therapy group 
+puppy_tib |>
+  dplyr::filter(dose == "No puppies" | dose == "15 mins") |>
+  effectsize::hedges_g(happiness ~ dose, data = _)
+
+#  Now adapt the code to compare the control group with the 30-minute therapy group 
+puppy_tib |>
+  dplyr::filter(dose == "No puppies" | dose == "30 mins") |>
+  effectsize::hedges_g(happiness ~ dose, data = _)
+
+#  Now adapt the code to compare the 15- and 30-minute therapy groups
+puppy_tib |>
+  dplyr::filter(dose == "15 mins" | dose == "30 mins") |>
+  effectsize::hedges_g(happiness ~ dose, data = _)
+
+#round the values (optional)
+```
+
+**Report**
+
+Participants were significantly more happy after 30-minutes of puppy therapy compared to no puppies, 𝑀difference�difference = -2.80 \[-5.27, -0.33\], *t* = -3.16, *p* = 0.025, 𝑔̂ �\^ = -1.74 \[-3.11, -0.31\]. The effect size was suspiciously large. There was no significant difference in happiness between those exposed for 15-minutes compared to no puppies, 𝑀difference�difference = -1.00 \[-3.47, 1.47\], *t* = -1.13, *p* = 0.282, 𝑔̂ �\^ = -0.69 \[-1.84, 0.49\] although the effect was large. Also, there was no significant difference in happiness between those exposed for 15-minutes compared to 30-minutes, 𝑀difference�difference = -1.80 \[-4.27, 0.67\], *t* = -2.03, *p* = 0.130, 𝑔̂ �\^ = -1.12 \[-2.34, 0.15\] although the difference was greater than a standard deviation.
+
+## Robust models
+
+```{r}
+#Welsh's F
+oneway.test(happiness ~ dose, data = puppy_tib)
+
+#robust parameter estimates
+#Set contrasts
+contrasts(puppy_tib$dose) <- cbind(puppy_vs_none, short_vs_long)
+#Fit model
+puppy_rob <- robust::lmRob(happiness ~ dose, data = puppy_tib)
+summary(puppy_rob)
+
+#robust significance tests and confidence intervals
+parameters::model_parameters(puppy_lm, vcov = "HC4") |> 
+  knitr::kable(digits = 3)
+```
+
+## Trimmed means
+
+You wouldn't normally conduct all of these tests; you'd either do `t1way()` with `lincon()` or `t1waybt()` with `mcppb20()`.
+
+```{r}
+t1way(outcome ~ predictor, data = my_tibble, tr = 0.2, nboot = 100)
+lincon(outcome ~ predictor, data = my_tibble, tr = 0.2)
+t1waybt(outcome ~ predictor, data = my_tibble, tr = 0.2, nboot = 599)
+mcppb20(outcome ~ predictor, data = my_tibble, tr = 0.2, nboot = 599)
+```
+
+## Bayes factor
+
+```{r}
+puppy_bf <- BayesFactor::anovaBF(formula = happiness ~ dose, data = puppy_tib, rscaleFixed = "medium")
+puppy_bf
+```
+
+# Discovr_12 ANCOVA alternatives
+
+## Reordering factors
+
+```{r}
+pupluv_tib <- pupluv_tib |> dplyr::mutate(dose = forcats::fct_relevel(dose, "No puppies", "15 mins", "30 mins"))
+```
+
+## Indpendence of the covariate
+
+```{r}
+luvdose_lm <- lm(puppy_love ~ dose, data = pupluv_tib) 
+anova(luvdose_lm) |> 
+  knitr::kable(digits = 3)
+
+#non-significant f values = means are not different for different groups = variable is suitiable for use as a covariate
+```
+
+## Orthogonal contrasts
+
+For multiple predictors F values mucst be calculated using type III sum of squares (otherwise the second predictor is calculated in regard to the first) - for type III, orthoganal contrasts must be specified.
+
+```{r}
+#Set orthogonal contrasts
+puppy_vs_none <- c(-2/3, 1/3, 1/3)
+short_vs_long <- c(0, -1/2, 1/2)
+contrasts(pupluv_tib$dose) <- cbind(puppy_vs_none, short_vs_long)
+contrasts(pupluv_tib$dose) # This line prints the contrast weights so we can check them
+```
+
+## Lm model with covariate
+
+```{r}
+# Solution:
+pupluv_lm <- lm(happiness ~ puppy_love + dose, data = pupluv_tib)
+car::Anova(pupluv_lm, type = 3) |> 
+  knitr::kable(digits = 3)
+```
+
+P value of F statistic: It is the probability of getting a value of *F* at least as big as 4.142 if the null hypothesis were true (i.e. if the means for the three therapy groups were identical)
+
+## Adjusted means
+
+```{r}
+#Get the means adjusted for the covariate
+modelbased::estimate_means(pupluv_lm,
+                           fixed = "puppy_love",
+                           levels="dose",
+                          ) |> 
+  knitr::kable(digits = 3)
+
+#View the parameter estimates
+broom::tidy(pupluv_lm, conf.int = TRUE)
+```
+
+the *b*-value is the difference between the adjusted mean of the control group and the average of the adjusted means for the 15- and 30-minute groups. The associated *t*-statistic is significant (*p* = 0.010), indicating that the control group was significantly different from the combined adjusted mean of the puppy therapy groups. The *b*-value for the second dummy variable (**doseshort_vs_long**) is the difference between the adjusted means of the 15- and 30-minute groups. The associated *t*-statistic is not significant (*p* = 0.593), indicating that the 30-minute group did not produce significantly different happiness than the 15-minute group after adjusting for love of puppies.
+
+## Post-hoc tests
+
+```{r}
+modelbased::estimate_contrasts(pupluv_lm,
+                               contrast = "dose",
+                               fixed = "puppy_love",
+                               adjust = "bonferroni") |> 
+  knitr::kable(digits = 3)
+```
+
+## Robust parameter estimates
+
+```{r}
+
+```
+
+## robust significance tests and confidence intervals
+
+```{r}
+parameters::model_parameters(pupluv_lm, vcov = "HC4") |> 
+  knitr::kable(digits = 3)
+```
+
+## Bootstrapping
+
+```{r}
+parameters::bootstrap_parameters(pupluv_lm) |> 
+  knitr::kable(digits = 3)
+```
+
+CI interpretation: if this confidence interval is one of the 95% that contains the population value then the population value of the *b* lies between -0.01 and 0.70.
+
+## Effect sizes
+
+```{r}
+effectsize::eta_squared(lm, partial = TRUE, ci = 0.9)
+effectsize::omega_squared(lm, partial = TRUE, ci = 0.9)
+```
+
+## assumptions of homogeneity
+
+Homogeneity of regression slopes refers to the relationship between the covariate and outcome being similar across levels of the categorical predictor. In this model, homogeneity of regression slopes would mean that the relationship between **puppy_love** and **happiness** is similar in the no puppies, 15-minute and 30-minute groups. We know this is unlikely to be true from the scatterplot that we produced at the beginning of this tutorial.
+
+Homogeneity of regression slopes is desirable only if the goal is to look at the effect of the categorical variable adjusting for the covariate. In this case, what is the effect of puppy therapy at average levels of puppy love? If the relationship between puppy love and happiness changes as a function of the treatment group (i.e. heterogeneity of regression slopes) then the effect of puppy therapy is undetermined because it varies according to the value of the covariate.
+
+However, in other situations homogeneity of regression doesn't matter. For example, in `discovr_10` we explored moderation effects; that is, where we hypothesize that the effect of one predictor varies as a function of another. When your aim is to test for moderation between a categorical and continuous predictor a significant interaction provides support for moderation (it shows that the effect of one predictor varies as a function of the other). So, it's not the case that an interaction between a categorical and continuous predictor is necessarily a bad thing - it depends on the context
+
+```{r}
+#Refit model
+hors_lm <- lm(happiness ~ puppy_love*dose, data = pupluv_tib) 
+car::Anova(hors_lm, type = 3) |> 
+  knitr::kable(digits = 3)
+
+#Reread "interactions between.." in discovr_12"
+```
+
+## Bayes factors
+
+```{r}
+#for the model containing puppy_love only
+pupcov_bf <-  BayesFactor::lmBF(formula = happiness ~ puppy_love, data = pupluv_tib, rscaleFixed = "medium", rscaleCont = "medium")
+pupcov_bf
+
+#for the model containing puppy_love and dose and the comparison of the two
+pup_bf <-  BayesFactor::lmBF(formula = happiness ~ puppy_love + dose, data = pupluv_tib, rscaleCont = "medium", rscaleFixed = "medium")
+pup_bf/pupcov_bf
+```
+
+# Discovr_13 Factorial Designs
+
+## model with lm()
+
+```{r}
+#Set contrasts
+contrasts(goggles_tib$facetype) <- contr.sum(2)
+contrasts(goggles_tib$alcohol) <- contr.sum(3)
+goggles_lm <- lm(attractiveness ~ facetype*alcohol, data = goggles_tib)
+car::Anova(goggles_lm, type = 3) |>   # or car::Anova(goggle_lm, type = 3, white.adjust = "hc3")
+  knitr::kable(digits = 3)
+
+#obtain means across all combinations of levels
+modelbased::estimate_means(goggles_lm, at = c("facetype", "alcohol"))
+
+#specific contrasts
+alcohol_vs_none <- c(-2/3, 1/3, 1/3)
+low_vs_high <- c(0, -1/2, 1/2)
+contrasts(goggles_tib$alcohol) <- cbind(alcohol_vs_none, low_vs_high)
+contrasts(goggles_tib$facetype) <- c(-1/2, 1/2)
+goggles_lm <- lm(attractiveness ~ facetype*alcohol, data = goggles_tib)
+car::Anova(goggles_lm, type = 3) |> 
+  knitr::kable(digits = 3)
+
+```
+
+**Report**
+
+There was a significant effects of the type of face used, *F*(1, 42) = 15.58, *p* \< 0.001, and the dose of alcohol, *F*(2, 42) = 6.04, *p* = 0.005. However, these effects were superseded by a significant interaction between the type of face being rated and the dose of alcohol, *F*(2, 42) = 8.51, *p* \< 0.001. Contrasts suggested that the difference between ratings of symmetric and asymmetric faces was significantly smaller after any dose of alcohol compared to no alcohol, 𝑏̂ = -2.31 \[-3.76, -0.87\], *t* = -3.23, *p* = 0.002, and became smaller still when comparing a high- to a low-dose of alcohol, 𝑏̂ = -2.12 \[-3.79, -0.46\], *t* = -2.57, *p* = 0.014. These effects support the 'beer-googles' hypothesis: when no alcohol is consumed symmetric faces were rated as more attractive than asymmetric faces but this difference diminishes as more alcohol is consumed.
+
+## Simple effects analysis
+
+```{r}
+# for the model created with lm
+#by 'facetype
+emmeans::joint_tests(goggles_lm, "facetype") |> 
+  knitr::kable(digits = 3)
+
+#By 'alcohol'
+# for the model created with lm
+emmeans::joint_tests(goggles_lm, "alcohol") |> 
+  knitr::kable(digits = 3)
+```
+
+**Report**
+
+There was a significant effects of the type of face used, *F*(1, 42) = 15.58, *p* \< 0.001, and the dose of alcohol, *F*(2, 42) = 6.04, *p* = 0.005. However, these effects were superseded by a significant interaction between the type of face being rated and the dose of alcohol, *F*(2, 42) = 8.51, *p* \< 0.001. Simple effects analysis revealed that symmetric faces were rated as significant more attractive than asymmetric faces after no alcohol, *F*(1, 42) = 24.15, *p* \< 0.001, and a low dose, *F*(1, 42) = 7.71, *p* = 0.008, but were rated comparably after a high dose of alcohol, *F*(1, 42) = 0.73, *p* = 0.398. These effects support the 'beer-googles' hypothesis: the standard tendency to rate symmetric faces as more attractive than asymmetric faces was present at low doses and no alcohol, but was eliminated by a high dose of alcohol.
+
+## Robust parameter estimates
+
+```{r}
+goggles_rob <- robust::lmRob(attractiveness ~ facetype*alcohol, data = goggles_tib)
+summary(goggles_rob)
+```
+
+## Robust significance tests and confidence intervals
+
+(robust to heteroscedasticity)
+
+```{r}
+parameters::model_parameters(goggles_lm, vcov = "HC4") |> 
+  knitr::kable(digits = 3) 
+```
+
+## Bootstrapping
+
+```{r}
+parameters::bootstrap_parameters(goggles_lm) |> 
+  knitr::kable(digits = 3)
+```
+
+## Effect sizes
+
+```{r}
+#partial eta squared
+car::Anova(goggles_lm, type = 3) |> 
+  effectsize::eta_squared(ci = 0.95) |> 
+  knitr::kable(digits = 3)
+
+# partial omega squared:
+car::Anova(goggles_lm, type = 3) |> 
+  effectsize::omega_squared(ci = 0.95) |> 
+  knitr::kable(digits = 3)
+```
+
+**Report**
+
+There was a significant effects of the type of face used, *F*(1, 42) = 15.58, *p* \< 0.001, 𝜔̂ 𝑝\^2 = 0.23 \[0.07, 1.00\], and the dose of alcohol, *F*(2, 42) = 6.04, *p* = 0.005, 𝜔̂ 𝑝�\^2 = 0.17 \[0.02, 1.00\]. However, these effects were superseded by a significant interaction between the type of face being rated and the dose of alcohol, *F*(2, 42) = 8.51, *p* \< 0.001, 𝜔̂ 𝑝�\^2 = 0.24 \[0.06, 1.00\]. This interaction suggests that the effect of alcohol is moderated by the type of face being rated (and vice versa). Based on the means (see plot) this interaction supports the 'beer-googles' hypothesis: when no alcohol is consumed symmetric faces were rated as more attractive than asymmetric faces but this difference diminishes as more alcohol is consumed.
+
+## Bayes factors
+
+```{r}
+## Full solution:
+alcohol_bf <- BayesFactor::lmBF(formula = attractiveness ~ alcohol, data = goggles_tib)
+
+facetype_bf <-  BayesFactor::lmBF(formula = attractiveness ~ alcohol + facetype, data = goggles_tib)
+
+int_bf <- BayesFactor::lmBF(formula = attractiveness ~ alcohol + facetype + alcohol:facetype, data = goggles_tib)
+
+alcohol_bf
+facetype_bf/alcohol_bf
+int_bf/facetype_bf
+```
+
+# Discovr_14
+
+# Discovr_15_growth
+
+```{r}
+#Check levels
+levels(growth_evil_tib$intervention)
+levels(growth_evil_tib$time)
+
+#REorder levels
+growth_evil_tib <- growth_evil_tib |> 
+  dplyr::mutate(
+    intervention = forcats::fct_relevel(intervention, "Wait list"),
+    time = forcats::fct_relevel(time, "1 month", after = 1)
+  )
+```
+
+## Descriptive Statistics
+
+```{r}
+#descriptive table
+growth_sum <- stress_growth_tib |>
+  dplyr::group_by(intervention, time) |>
+  dplyr::summarize(
+    mean_resemblance = mean(resemblance),
+    ci_low_resemblance = ggplot2::mean_cl_normal(resemblance)$ymin,
+    ci_upp_resemblance = ggplot2::mean_cl_normal(resemblance)$ymax
+)
+growth_sum |> 
+  knitr::kable(digits = 3)
+
+#Plot
+ggplot2::ggplot(stress_growth_tib, aes(time_num, resemblance, colour = intervention, fill = intervention)) +
+  geom_point(size = 1, alpha = 0.6, position = position_jitter(width = 0.1, height = 0.1)) +
+  geom_smooth(method = "lm", alpha = 0.3) +
+  coord_cartesian(ylim = c(0, 90)) +
+  scale_y_continuous(breaks = seq(0, 90, 10)) +
+  scale_x_continuous(breaks = c(0, 1, 6, 12), labels = c("0", "1", "6", "12")) +
+  labs(x = "Time from baseline (months)", y = "Resemblance (%)", colour = "Intervention", fill = "Intervention") +
+  theme_minimal()
+```
+
+## Fit growth Model
+
+L ratio = x\^2 = fit of model
+
+```{r}
+#create and compare random intercept and random slope models
+stress_ri <- nlme::lme(resemblance ~ time_num, random = ~ 1|id, data = stress_growth_tib, method = "ML")
+
+stress_rs <- update(stress_ri, random = ~ time_num|id)
+anova(stress_ri,stress_rs) |>
+  knitr::kable(digits = 2, caption = "Comparison of random slope to the random intercept model")
+```
+
+```{r}
+#Update model to include intervention
+stress_mod <- update(stress_rs, .~. + intervention + time_num:intervention)
+anova(stress_ri,stress_rs, stress_mod) |>
+  knitr::kable(digits = 2, caption = "Comparison of models")
+```
+
+```{r}
+#F statistics
+anova(stress_mod) |>
+  knitr::kable(digits = 2, caption = "Table of fixed effects")
+```
+
+```{r}
+#Use the code box to view the model parameters for the fixed effects and round them to 3 decimal places
+broom.mixed::tidy(stress_mod, conf.int = T, effects = "fixed") |> 
+  knitr::kable(digits = 3)
+```
+
+The final model shows that
+
+-   Overall gene therapy (compared to a wait list control) did not significantly predict resemblance scores, 𝛾̂ �\^ = -1.58 \[-4.76, 1.60\], *t*(139) = -0.98, *p* = 0.330. Resemblance scores were, overall, -1.58 percent (remember resemblance is measured on a percentage scale) lower after gene therapy than in the wait list. However, this effect ignores the change over time.
+
+-   Resemblance scores significantly changed over time 𝛾̂ �\^ = -0.33 \[-0.51, -0.14\], *t*(421) = -3.49, *p* \< 0.001. For every month that passed, resemblance scores changed by -0.33 percent (remember resemblance is measured on a percentage scale), that is, they resembled their pre-zombification state less.
+
+-   The change over time of resemblance scores was significantly affected by whether the zombie had gene therapy or was in the wait list, 𝛾̂ �\^ = 0.92 \[0.67, 1.18\], *t*(421) = 7.09, *p* \< 0.001. The rate of change in resemblance scores is 0.92 higher in the intervention group than in the wait list group.

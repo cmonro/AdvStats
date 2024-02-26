@@ -1,0 +1,375 @@
+---
+title: "Report"
+author: "Candidate 277353"
+format: 
+  html:
+    self-contained: true
+    theme: united
+    linkcolor: "#f1c232"
+    code-fold: false
+    toc: true
+knitr:
+  opts_chunk: 
+    message: false
+    echo: true
+    warning: false
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#load packages
+library(lavaan)
+library(semPlot)
+library(semptools)
+library(kableExtra)
+library(tidyr)
+library(tidyverse)
+```
+
+# Assignment 1 - Candidate 277353
+
+## **Analysis plan**
+
+The present research explores the mediating relationships of school quality (`Sch`), interdependence (`Dep`), and pro-sociality (`Soc`) on the relationship between socio-economic class (`SEC`) and employability (`Emp`). The resaerch is expected to have important implications for socio-economic equality and explain some of the causes of low social mobility in western countries. Each variable was standardised (explaining why some values are \<0).
+
+The team tested the following hypothesis:
+
+-   H~1~: The relationship between employability and SEC will be fully mediated by a combination of interdependence and pro-sociality mediating in sequence and school quality mediating in parallel to the serial factors.
+
+An initial analysis will be run, fitting the data to eight simple linear regressions of each of the interaction paths of the planned model. If the simple regressions between the predictor and mediators and between the mediators and outcome are significant the mediation model will be fitted. If one or more of the simple regressions between the predictor and mediators or between the mediators and outcome is non-significant the mediation model will be abandoned and the coefficients of the simple regressions will be reported.
+
+To test this hypotheses, the data will be fitted to a SEM mediation model with 5000 non-parametric bootstrap samples. The model will use SEC as an exogenous predictor variable, interdependence and pro-sociality as serial endogenous mediating variables, school quality as a parallel endogenous mediating variable, and employability as endogenous outcome variable.
+
+If one or more of the paths of the mediation model are non-significant, an alternative model will be considered .
+
+## **Coding**
+
+This section of the report includes creation of data, fitting of the planned models and creation of plots. Results and analysis will be reported under [Results](#results).
+
+```{r}
+#| output: false
+# create data
+set.seed(22335) #
+SEC <- rnorm(250)
+Dep <- 0.60*SEC + rnorm(250)
+Soc <- 0.35*SEC + rnorm(250)
+Sch <- 0.55*SEC + rnorm(250) 
+Emp <- 0.35*Soc + 0.1*Soc + 0.33*Sch + rnorm(250)
+
+df <- data.frame(SEC=SEC, Dep=Dep, Soc=Soc, Sch=Sch, Emp=Emp)
+
+
+
+#Check paths for significance
+model_a1 <- lm(Dep~SEC, data = df) 
+tbl1 <- model_a1 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl1
+
+model_a2 <- lm(Soc~SEC, data = df) 
+tbl2 <- model_a2 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl2
+
+model_b4 <- lm(Soc~Dep, data = df) 
+tbl3 <- model_b4 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl3
+
+model_a3 <- lm(Sch~SEC, data = df)
+tbl4 <- model_a3 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl4
+
+model_b1 <- lm(Emp~Dep, data = df)
+tbl5 <- model_b1 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl5
+
+model_b2 <- lm(Emp~Soc, data = df) 
+tbl6 <- model_b2 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl6
+
+model_b3 <- lm(Emp~Sch, data = df) 
+tbl7 <- model_b3 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl7
+
+model_c <- lm(Emp~SEC, data = df) 
+tbl8 <- model_c |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl8
+
+#parallel and serial mediation model
+model <- ' # direct effect
+             Emp ~ c*SEC
+           # mediator
+             Dep ~ a1*SEC
+             Soc ~ a2*SEC
+             Soc ~ b4*Dep
+             Sch ~ a3*SEC
+             Emp ~ b1*Dep
+             Emp ~ b2*Soc
+             Emp ~ b3*Sch
+           # moderator
+            
+           # indirect effect (a*b)
+             a1b4b2 := a1*b4*b2
+             a1b1 := a1*b1
+             a2b2 := a2*b2
+             a3b3 := a3*b3
+           # total effect
+             total := c + (a1*b4*b2) + (a1*b1) + (a2*b2) + (a3*b3)
+         '
+
+
+
+#Fit model
+model_fit <- sem(model, data = df, se = 'bootstrap', bootstrap = 5000)
+
+#Results table
+tbl9 <- model_fit |>
+  parameterEstimates() |>
+  kable(
+   #col.names = c("Outcome", "Function", "Predictor", "B", "SE", "z", "p", "CI Low", "CI High"),
+    digits = c(1, 1, 1, 1, 2, 2, 2, 3, 2, 2),
+     align=rep('c', 10)
+  )
+
+#Diagram
+plot <- semPaths(model_fit,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "tree",
+         intercepts = FALSE,
+         rotation = 2, edge.label.ceSEC = 1)
+plot_sig <- mark_sig(plot,model_fit)
+list <- c("Emp ~ Soc" = .2)
+plot_edge <- set_edge_label_position(plot_sig, position_list = list)
+plot(plot_edge)
+
+
+
+#second model
+#parallel mediation model
+model2 <- ' # direct effect
+             Emp ~ c*SEC
+           # mediator
+             Soc ~ a2*SEC
+             Sch ~ a3*SEC
+             Emp ~ b2*Soc
+             Emp ~ b3*Sch
+           # moderator
+            
+           # indirect effect (a*b)
+             a2b2 := a2*b2
+             a3b3 := a3*b3
+           # total effect
+             total := c + (a2*b2) + (a3*b3)
+         '
+
+
+
+#Fit model
+model_fit2 <- sem(model2, data = df, se = 'bootstrap', bootstrap = 5000)
+
+#Results table
+tbl10 <- model_fit2 |>
+  parameterEstimates() |>
+  kable(
+   #col.names = c("Outcome", "Function", "Predictor", "B", "SE", "z", "p", "CI Low", "CI High"),
+    digits = c(1, 1, 1, 1, 2, 2, 2, 3, 2, 2),
+     align=rep('c', 10)
+  )
+
+#Diagram
+plot2 <- semPaths(model_fit2,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "tree",
+         intercepts = FALSE,
+         rotation = 2, edge.label.ceSEC = 1)
+plot_sig2 <- mark_sig(plot2,model_fit2)
+list2 <- c("Emp ~ Sch" = .2)
+plot_edge2 <- set_edge_label_position(plot_sig2, position_list = list2)
+plot(plot_edge2)
+```
+
+## **Results** {#results}
+
+### Initial analyses
+
+@tbl-1 to @tbl-8 show the simple regressions of each interaction path from the mediation model. Seven of the eight interaction paths were significant when regressed individually. Path b4 (interdependence -\> pro-sociality) was non significant when regressed individually (@tbl-3 b = 0.10, p = .093 , F = 1.69, se = 0.06, ci\[0.95\] = (-0.02; 0.22)). This could indicate that there is not enough justification for the mediation model but as the other paths were significant the decision was made to fit the model.
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between SEC and interdependence"
+#| label: tbl-1
+tbl1
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between SEC and pro-sociality"
+#| label: tbl-2
+tbl2
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between interdependence and pro-sociality"
+#| label: tbl-3
+tbl3
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between SEC and school quality"
+#| label: tbl-4
+tbl4
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between interdependence and employabiliy"
+#| label: tbl-5
+tbl5
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between pro-sociality and employability"
+#| label: tbl-6
+tbl6
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between school quality and employability"
+#| label: tbl-7
+tbl7
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of simple regression between SEC and employability"
+#| label: tbl-8
+tbl8
+```
+
+### Mediation model
+
+@tbl-9 shows the unstandardised output of the fitted mediation model. The total effect was significant (b = 0.36, p \< .001, z = 4.66, se = 0.08, ci\[0.95\] = (0.21; 0.52)). However, the indirect sequential path of interdependence and pro-sociality was non-significant (b = 0.00, p = .864, z = -0.17, se = 0.02, ci\[0.95\] = (-0.04; 0.04)) and the indirect path of interdependence was also non-significant (b = -0.01, p = .900, z = -0.13, se = 0.04, ci\[0.95\] = (-0.09; 0.08)), but the indirect path of pro-sociality was significant (b = 0.12, p = .006, z = 2.73, se = 0.04, ci\[0.95\] = (0.04; 0.21)). The parallel path of school quality was significant (b = 0.16, p \< .001, z = 4.24, se = 0.04, ci\[0.95\] = (0.09; 0.24)). Despite initial analysis finding that employability is significantly predicted by SEC, the direct path in the model was non-significant (b = 0.09, p = .242 , z = 1.17, se = 0.08, ci\[0.95\] = (-0.06; 0.24)) suggesting that the fitted model represents a full mediation.
+
+Paths *a1* (SEC -\> interdependence), *a2* (SEC -\> pro-sociality), and *b2* (pro-sociality -\> employability) were significant (b = 0.61, p \< .001, z = 9.89, se = 0.06, ci\[0.95\] = (0.49; 0.73), b = 0.23, p \< .001, z = 2.85, se = 0.08, ci\[0.95\] = (0.07; 0.38), and b = 0.52, p \< .001, z = 8.25, se = 0.06, ci\[0.95\] = (0.40; 0.64)). However, paths *b4* (interdependence -\> pro-sociality) and *b1* (interdependence -\> employability) were non-significant (b = -0.01, p = .861 , z = -0.18, se = 0.07, ci\[0.95\] = (-0.14; 0.12), and b = -0.01, p = .900, z = -0.13, se = 0.07, ci\[0.95\] = (-0.15; 0.14)). Paths *a3 (SEC -\> school quality)* and *b3* (school quality -\> employability) were significant (b = 0.55, p \< .001, z = 9.04, se = 0.06, ci\[0.95\] = (0.43; 0.67), and b = 0.29, p \< .001, z = 4.91, se = 0.06, ci\[0.95\] = (0.18; 0.41)).
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of fitted mediation model"
+#| label: tbl-9
+tbl9
+```
+
+@fig-1 shows the unstandardised coefficients of the model plotted in a mediation diagram.
+
+```{r}
+#| echo: false
+#| fig-cap: "Regression coefficients for the relationship between SEC and employability, mediated by interdependence pro-sociality in series and school quality in paralell. * indicates P ≤ 0.05, ** indicates P ≤ 0.01, *** indicates P ≤ 0.001. Single sided arrows indicate relationship paths. Double sided arrows indicate variable variance"
+#| label: fig-1
+plot(plot_edge)
+```
+
+The model did not find interdependence to be correlated with either pro-sociality or employability. As a result, we theorise that interdependence is predicted by SEC but that interdependence is not a factor in the disparity in employability between individuals. The decision was made to adjust the model, removing interdependence as a variable. The remaining path labels were kept the same to help interpretation.
+
+@tbl-10 shows the unstandardised output of the adjusted mediation model. The total effect was significant (b = 0.36, p \< .001, z = 4.76, se = 0.08, ci\[0.95\] = (0.21; 0.51)). Both mediating paths, through pro-sociality and through school quality, were significant (b = 0.11, p = .003, z = 2.95, se = 0.04, ci\[0.95\] = (0.04; 0.19), and b = 0.16, p = \< .001, z = 4.26, se = 0.04, ci\[0.95\] = (0.09; 0.24)). The direct effect was non-significant (b = 0.08, p = .221, z = 1.22, se = 0.07, ci\[0.95\] = (-0.05; 0.22)) suggesting that the adjusted model represents a full mediation.
+
+```{r}
+#| echo: false
+#| tbl-cap: "Output of fitted adjusted mediation model"
+#| label: tbl-10
+tbl10
+```
+
+@fig-2 shows the unstandardised coefficients of the adjusted model plotted in a mediation diagram.
+
+```{r}
+#| echo: false
+#| fig-cap: "Regression coefficients for the relationship between SEC and employability, mediated by pro-sociality and school quality. * indicates P ≤ 0.05, ** indicates P ≤ 0.01, *** indicates P ≤ 0.001. Single sided arrows indicate relationship paths. Double sided arrows indicate variable variance"
+#| label: fig-2
+plot(plot_edge2)
+```
+
+## Summary
+
+In summary, the original mediation model did fully mediate the relationship between SEC and Employability. However, against the prediction of H~1~, interdependence was shown to not mediate the relationship. The model coefficient of the mediating effect of pro-sociality (b = 0.12, ci\[0.95\] = (0.04; 0.21)) suggests that for each unit increase in SEC, the change in pro-sociality is responsible for 0.12 units increase in employability with a maximum effect of 0.21 units. Additionally, for each unit increase in SEC, the change in school quality is responsible for 0.12 units increase in employability with a maximum effect of 0.21 units. These findings contrast with some aspects of H~1~ but suggest that the relationship between SEC and employability is fully explained by variability in pro-sociality and school quality.
+
+The adjusted model allowed for modelling with no non-significant mediating pathways but the resulting coefficients were not meaningfully different from the original model.

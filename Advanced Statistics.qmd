@@ -1,0 +1,661 @@
+---
+title: "Advanced Statistics"
+format: html
+editor: visual
+---
+
+# Advanced Statistics Workshop
+
+## Diss analysis copy
+
+```{r}
+#BSc
+
+#Mediation
+
+#Mediation of polbeh & Eltemp for objective class
+PolObjmodel <- "Eltmean ~ c*ObjClass + b*Polmean  
+                   Polmean ~ a*ObjClass
+
+                   indirect_effect := a*b
+                   total_effect := c + (a*b)"
+
+# fit the model with FIML and robust SEs
+PolObjMed <- lavaan::sem(PolObjmodel, data = DATA_rel, missing = "FIML", estimator = "MLR")
+
+#summarize the model (and round values for convenience)
+broom::glance(PolObjMed) |>  knitr::kable(digits = 3)
+broom::tidy(PolObjMed, conf.int = TRUE) |>  knitr::kable(digits = 3)
+##########################################################################
+
+#Bootstrapped Mediation of polbeh & Eltemp for objective class
+# fit the model with FIML and CHANGED TO NON ROBUST SE (ML)
+#PolObjBoot <- lavaan::sem(PolObjmodel, data = DATA_rel, test = "bootstrap",
+                         #bootstrap = 5000, estimator = "ML")
+
+#summarize the model (and round values for convenience)
+#broom::glance(PolObjBoot) |>  knitr::kable(digits = 3)
+#broom::tidy(PolObjBoot, conf.int = TRUE) |>  knitr::kable(digits = 3)
+##########################################################################
+
+#Mediation diagram
+labels1 <- list(ObjClass = "Objective SEC", Polmean = "Political Behaviour", Eltmean = "Employability")
+lavaanPlot(model = PolObjMed, labels = labels1, node_options = list(shape = "box", fontname = "Helvetica"), edge_options = list(color = "grey"), coefs = TRUE, digits=3, stars="regress")
+
+```
+
+## SEM Mediation
+
+```{r}
+#Pre mediation requirements
+#At minimum all paths must be significant individually
+#Ideallly multiple regression with mediator and predictor and outcome are significant
+
+#Random data creation
+set.seed(13548) #note that we set the seed to a specific value
+X <- rnorm(250) #number of observations
+M <- 0.60*X + rnorm(250) # what does the 0.4 and rnorm represent here?
+Y <- 0.35*M +  rnorm(250) # what does the 0.6 and rnorm represent here?
+
+df <- data.frame(X=X, Y=Y, M=M)
+
+#Check c path significance
+model_XY <- lm(Y~X, data = df) # seen above as path c
+summary(model_XY)
+
+#Check a path for significance
+model_XM <- lm(M~X, data = df) # seen above as path a 
+summary(model_XM)
+
+#Check b path for significance
+model_MY <- lm(Y~M, data = df) # seen above as path b  
+summary(model_MY)
+
+#Mediation
+#Set model
+library(lavaan)
+library(semPlot)
+
+model_med <- ' # direct effect
+             Y ~ c*X
+           # mediator
+             M ~ a*X
+             Y ~ b*M
+           # indirect effect (a*b)
+             ab := a*b
+           # total effect
+             total := c + (a*b)
+         '
+
+#Fit model
+model_med_fit <- sem(model_med, data = df, se = 'bootstrap', bootstrap = 100)
+
+
+
+#explore model
+summary(model_med_fit, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE, ci = TRUE)
+
+#Parameter analysis
+parameterEstimates(model_med_fit, level = .95)
+
+#Standardized parameter estimates
+lavaan::standardizedsolution(model_med_fit, level = .95)
+
+#Diagram
+library(semPlot)
+library(semptools)
+plot_med <- semPaths(model_med_fit,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "tree",
+         intercepts = FALSE,
+         rotation = 2, edge.label.cex = 1)
+plot_med <- mark_sig(plot_med,model_med_fit)
+plot(plot_med)
+
+```
+
+## Week 2 task
+
+Following the mediation example we covered in our lecture we now want you to try to model a serial mediation model where you have one predictor, two mediators, and one outcome. You can see an conceptual model below.
+
+![](images/image1.jpeg)
+
+Note: the names of the paths are not obligatory, you can chose your own naming
+
+This will be very useful for your assignment as well. We want you to create the 4 variables you will use in the analysis. You can choose names that make more sense to you, for example concepts you have been reading about that are relevant for your research. So in the code below feel free to chance X, M1, M2, and Y with any variable names of your liking. Also, make sure to set a seed number as well as create a dataframe.
+
+In terms of number of observations we have set it to 100 but you can change it to your liking.
+
+Also the weightings of 0.4 for all relationships below were chosen arbitrarily, please do experiment with different values
+
+```{r}
+set.seed(69420) #feel free to change the value here
+X <- rnorm(100) #number of observations
+M1 <- 0.6*X + rnorm(100)# experiment with the 0.4 value
+M2 <- 0.4*X + rnorm(100)# experiment with the 0.4 value
+M3 <- 0.5*X + rnorm(100)
+M4 <- 0.7*X + rnorm(100)
+Y <- 0.8*M1 +  rnorm(100) # experiment with the 0.4 value
+
+df <- data.frame(X=X, Y=Y, M1=M1, M2=M2, M3=M3, M4=M4)
+```
+
+In the following code section specify the model using lavaan syntax
+
+![](images/image1.jpeg)
+
+## Serial Mediation
+
+```{r}
+#Serial mediation model
+model_med <- ' # direct effect
+             Y ~ c*X
+           # mediator
+             M1 ~ a*X
+             M2 ~ a2*X
+             M2 ~ a3*M1
+             Y ~ b1*M1
+             Y ~ b2*M2
+           # indirect effect (a*b)
+             a1a3b2 := a1*a3*b2
+             a1b1 := a1*b1
+             a2b2 := a2*b2
+           # total effect
+             total := c + (a1*a3*b2) + (a1*b1) + (a2*b2)
+         '
+```
+
+In the following code section fit the model and get model parameters
+
+```{r}
+#Fit model
+model_med_fit <- sem(model_med, data = df, se = 'bootstrap', bootstrap = 100)
+
+#explore model
+summary(model_med_fit, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE, ci = TRUE)
+
+#Parameter analysis
+parameterEstimates(model_med_fit, level = .95)
+
+#Standardized parameter estimates
+lavaan::standardizedsolution(model_med_fit, level = .95)
+
+#Diagram
+library(semPlot)
+library(semptools)
+plot_med <- semPaths(model_med_fit,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "tree",
+         intercepts = FALSE,
+         rotation = 2, edge.label.cex = 1)
+plot_med <- mark_sig(plot_med,model_med_fit)
+plot(plot_med)
+```
+
+## Parallel Mediation
+
+![](images/image2.jpeg)
+
+```{r}
+#parallel mediation model
+model2_med <- ' 
+# alternative syntax of the model            
+Y ~ c*X + b1*M1 + b2*M2           
+M1 ~ a1*X              
+M2 ~ a2*X     
+
+# indirect effects (a*b)              
+a1b1 := a1*b1
+a2b2 := a2*b2
+# total effect              
+total := c + (a1*b1) + (a2*b2)          
+' 
+
+
+#Fit model
+model2_med_fit <- sem(model2_med, data = df, se = 'bootstrap', bootstrap = 100)
+
+#explore model
+summary(model2_med_fit, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE, ci = TRUE)
+
+#Parameter analysis
+parameterEstimates(model2_med_fit, level = .95)
+
+#Standardized parameter estimates
+lavaan::standardizedsolution(model2_med_fit, level = .95)
+
+#Diagram
+library(semPlot)
+library(semptools)
+plot_med <- semPaths(model2_med_fit,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "tree",
+         intercepts = FALSE,
+         rotation = 2, edge.label.cex = 1)
+plot_med2 <- mark_sig(plot_med,model2_med_fit)
+plot(plot_med2)
+```
+
+## semTable
+
+```{r}
+library(semTable)
+table1 <- semTable(model3_med_fit)
+```
+
+## Assignment 1
+
+moderation effects and control for a variable
+
+2 serial and 1 parallel - assignment
+
+```{r}
+#Parallel and serial model
+#Assignment prep
+
+library(lavaan)
+library(semPlot)
+library(lestat)
+
+set.seed(424242)
+x <- rnorm(100)
+m1 <- 0.8*x + rnorm(100)
+m2 <- 0.6*m1 + rnorm(100)
+m3 <- 0.7*x + rnorm(100)
+y <- 0.8*((m2+m3)/2) + rnorm(100) 
+
+df <- data.frame(x=x, y=y, m1=m1, m2=m2, m3=m3)
+
+#Check paths for significance
+model_a1 <- lm(m1~x, data = df) 
+tbl1 <- model_a1 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl1
+
+model_a2 <- lm(m2~x, data = df) 
+tbl2 <- model_a2 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl2
+
+model_a3 <- lm(m2~m1, data = df) 
+tbl3 <- model_a3 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl3
+
+model_a4 <- lm(m3~x, data = df)
+tbl4 <- model_a4 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl4
+
+model_b1 <- lm(y~m1, data = df)
+tbl5 <- model_b1 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl5
+
+model_b2 <- lm(y~m2, data = df) 
+tbl6 <- model_b2 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl6
+
+model_b3 <- lm(y~m3, data = df) 
+tbl7 <- model_b3 |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl7
+
+model_c <- lm(y~x, data = df) 
+tbl8 <- model_c |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+tbl8
+
+#parallel and serial mediation model
+model <- ' # direct effect
+             y ~ c*x
+           # mediator
+             m1 ~ a1*x
+             m2 ~ a2*x
+             m2 ~ a3*m1
+             m3 ~ a4*x
+             y ~ b1*m1
+             y ~ b2*m2
+             y ~ b3*m3
+           # moderator
+            
+           # indirect effect (a*b)
+             a1a3b2 := a1*a3*b2
+             a1b1 := a1*b1
+             a2b2 := a2*b2
+             a4b3 := a4*b3
+           # total effect
+             total := c + (a1*a3*b2) + (a1*b1) + (a2*b2) + (a4*b3)
+         '
+
+
+
+#Fit model
+model_fit <- sem(model, data = df, se = 'bootstrap', bootstrap = 100)
+
+#Parameter analysis
+parameterEstimates(model_fit, level = .95)
+
+#Standardized parameter estimates
+lavaan::standardizedsolution(model_fit, level = .95)
+
+#Results table test
+tbl9 <- model_fit |>
+  parameterEstimates() |>
+  kable(
+   #col.names = c("Outcome", "Function", "Predictor", "B", "SE", "z", "p", "CI Low", "CI High"),
+    digits = c(1, 1, 1, 1, 2, 2, 2, 3, 2, 2),
+     align=rep('c', 10)
+  )
+
+#format columns
+tbl9 <- remove_column(tbl9, 1:3)
+tbl9
+
+#Diagram
+library(semPlot)
+library(semptools)
+plot <- semPaths(model_fit,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "circle2",
+         intercepts = FALSE,
+         rotation = 1, edge.label.cex = 1)
+plot_sig <- mark_sig(plot,model_fit)
+list <- c("y ~ m2" = .2)
+plot_edge <- set_edge_label_position(plot_sig, position_list = list)
+plot(plot_edge)
+```
+
+## Week 3 workshop
+
+```{r}
+
+
+
+
+
+```
+
+## Week 3 zoom task
+
+![](quarto/images/week3zoom.JPG)
+
+```{r}
+set.seed(56541) 
+
+reading <- rnorm(250)
+
+writing <- 0.3*reading + rnorm(250)  
+
+maths <-  rnorm(250)  
+
+family <- 0.35*reading + 0.3*writing + 0.4*maths + rnorm(250) 
+
+individual <- 0.4*family + rnorm(250)    
+
+df <- data.frame(reading=reading, writing=writing, maths=maths, family=family, individual=individual)
+
+#Set model
+library(lavaan)
+library(semPlot)
+
+model1 <- ' 
+#Paths
+reading ~ a1*family
+writing ~ a2*family
+individual ~ b1*reading
+individual ~ b2*writing
+maths ~ b3*individual
+
+         '
+
+#Fit model
+model_fit1 <- sem(model1, data = df, se = 'bootstrap', bootstrap = 100)
+
+
+
+#explore model
+summary(model_fit1, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE, ci = TRUE)
+
+#Parameter analysis
+parameterEstimates(model_med_fit, level = .95)
+
+#Standardized parameter estimates
+lavaan::standardizedsolution(model_med_fit, level = .95)
+
+#Diagram
+library(semPlot)
+library(semptools)
+plot_med <- semPaths(model_fit1,
+         whatLabels = "est",
+         sizeMan = 10,          
+         style = "ram",          
+         layout = "tree",
+         intercepts = FALSE,
+         rotation = 2, edge.label.cex = 1)
+plot_med <- mark_sig(plot_med,model_fit1)
+plot(plot_med)
+
+```
+
+## Week 4 workshop EFA
+
+```{r}
+set.seed(1212)
+### normally distributed factors
+### these are just to help me set the indicators
+### the f1 and f2 will not be included in the data.frame
+f1 <- rnorm(250)
+f2 <- rnorm(250)
+
+### f1 indicators x1 to x3
+x1 <- f1 + rnorm(250, sd=0.15)
+x2 <- f1 + rnorm(250, sd=0.15)
+x3 <- f1 + rnorm(250, sd=0.15)
+
+### f2 indicators x4 to x6
+x4 <- f2 + rnorm(250, sd=0.15)
+x5 <- f2 + rnorm(250, sd=0.15)
+x6 <- f2 + rnorm(250, sd=0.15)
+
+### creating the dataframe
+df <- data.frame(x1=x1, x2=x2, x3=x3, x4=x4, x5=x5, x6=x6)
+```
+
+```{r}
+#Assess KMO and Barlettes test of sphericity
+
+library(EFAtools) ###EFAtools masks psych package
+
+KMO(df) 
+
+BARTLETT(df) 
+
+```
+
+```{r}
+#determining number of factors
+
+PARALLEL(df, eigen_type = "PCA")
+
+
+```
+
+```{r}
+#KMO, barrtletts, and multiple tests of factor numbers
+N_FACTORS(df, criteria = c("PARALLEL", "EKC", "SMT"),
+          eigen_type_other = c("SMC", "PCA"))
+
+#Scree plots of multiple tests
+N_FACTORS(df, method = "ULS")
+```
+
+```{r}
+#Factor extraction
+#Orthogonal rotation, usually the default setting for most EFA functions, treats all factors are non-correlated. The most commonly used is Varimax, however there are others. Be cautious when using orthogonal rotations, refer back to your theoretical background in order to make sure that your possible factors are indeed expected to be uncorrelated.
+#Oblique rotation, allows for correlated factors. The most commonly used is Promax, however there are others.
+
+#Unrotated
+EFA(df, n_factors = 2, method = "ML")
+
+#Orthoganal?
+EFA(df, n_factors = 2, rotation = "varimax")
+
+
+#Oblique rotation
+EFA(df, n_factors = 2, rotation = "promax")
+
+#Oblimin - also oblique
+EFA(df, n_factors = 2, rotation = "oblimin", method = "ULS")
+
+
+
+
+```
+
+```{r}
+#Factor extraction using psych package
+
+FA_df<- fa(df, nfactors=2, fm="ml")
+summary.psych(FA_df)
+
+residuals.psych(FA_df)
+
+FA_df$loadings
+```
+
+```{r}
+#efa in lavaan
+library(lavaan)
+
+efa.model.fit <- lavaan::efa(data = df, nfactors = 2, rotation = "promax")
+summary(efa.model.fit)
+```
+
+## Week 4 workshop task
+
+```{r}
+data(HolzingerSwineford1939)
+df2 <- HolzingerSwineford1939
+head(df2)
+library(tidyverse)
+df2 <- df2 |> 
+  dplyr::select(7:15)
+
+library(EFAtools) ###EFAtools masks psych package
+
+KMO(df2) 
+
+BARTLETT(df2) 
+
+PARALLEL(df2, eigen_type = "PCA")
+
+#EFA
+EFA(df2, n_factors = 3, rotation = "promax")
+
+```
+
+## moderated mediation test
+
+```{r}
+set.seed(69420) #feel free to change the value here
+X <- rnorm(100) #number of observations
+M1 <- 0.6*X + rnorm(100)# experiment with the 0.4 value
+M2 <- 0.4*X + rnorm(100)# experiment with the 0.4 value
+M3 <- 0.5*X + rnorm(100)
+M4 <- 0.7*X + rnorm(100)
+Y <- 0.8*M1 +  rnorm(100) # experiment with the 0.4 value
+
+df <- data.frame(X=X, Y=Y, M1=M1, M2=M2, M3=M3, M4=M4)
+
+model_med <- ' # direct effect
+             Y ~ c*X
+           # mediator
+             M1 ~ M2*X
+             Y ~ b1*M1
+             Y ~ b2*M2
+          
+         '
+
+#Fit model
+model_med_fit <- sem(model_med, data = df, se = 'bootstrap', bootstrap = 100)
+
+#explore model
+summary(model_med_fit, fit.measures = TRUE, standardized = TRUE, rsquare = TRUE, ci = TRUE)
+
+#Parameter analysis
+parameterEstimates(model_med_fit, level = .95)
+```

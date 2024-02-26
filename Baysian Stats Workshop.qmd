@@ -1,0 +1,124 @@
+---
+title: "Baysian Stats Workshop"
+format: html
+editor: visual
+---
+
+```{r}
+#Random walk - not working
+library(igraph)
+data <- data.frame()
+for(i in 1:20) {
+  walk_data <- data.frame(
+    trajectory = random_walk(10),
+    time = seq(0, 10),
+    iteration = i
+  )
+  data <- rbind(data, walk_data)
+}
+
+data |>
+  mutate(iteration = as.factor(iteration)) |>
+  ggplot(aes(x=time, y=trajectory, color=iteration)) +
+  geom_line() +
+  coord_flip(
+```
+
+```{r}
+#uniform distribution
+library(ggplot2)
+data.frame(x = runif(50000, min=-10, max=10)) |>
+  ggplot(aes(x=x)) +
+  geom_histogram(bins = 50, color="pink", fill="plum") +
+  coord_cartesian(xlim=c(-15, 15))
+```
+
+```{r}
+#run 10000 distributions (game, beta, or uniform) and plot the means of each dist
+means1 <- c()
+for(i in 1:10000) {
+  x <- rgamma(100, shape = 10)
+  means1 <- c(means1, mean(x))
+}
+
+data.frame(x = means1) |>
+  ggplot(aes(x=x)) +
+  geom_histogram(bins=40, color="black")
+
+
+means2 <- c()
+for(i in 1:10000) {
+  x <- rbeta(100, shape1 = 10, shape2 = 1.5)
+  means2 <- c(means2, mean(x))
+}
+
+data.frame(x = means2) |>
+  ggplot(aes(x=x)) +
+  geom_histogram(bins=40, color="black")
+
+
+means3 <- c()
+for(i in 1:10000) {
+  x <- runif(50000, min=-10, max=10)
+  means3 <- c(means3, mean(x))
+}
+
+data.frame(x = means3) |>
+  ggplot(aes(x=x)) +
+  geom_histogram(bins=40, color="black")
+```
+
+```{r}
+lm1 <- lm(mpg ~ qsec, data = mtcars)
+broom::tidy(lm1)
+```
+
+### Week 3 brms
+
+```{r}
+library(brms)
+
+brm(mpg ~ wt, data=mtcars)
+
+```
+
+```{r}
+
+results <- correlation::cor_test(mtcars, "mpg", "qsec")
+plot(results)
+
+effectsize::arr(results)
+```
+
+```{r}
+r_values <- c()  # Initialize an empty vector of r values
+for (i in 1:5000) {  # Repeat the process 5000 times
+  new_sample <- mtcars[sample(1:nrow(mtcars), replace = TRUE), ]  # Sample new data
+  result <- correlation::cor_test(new_sample, "mpg", "qsec")  # Compute the correlation
+  r_values <- c(r_values, result$r)  # Append the r value to the vector
+}
+
+results <- correlation::cor_test(mtcars, "mpg", "qsec")
+actual_r <- results$r
+
+
+p <- data.frame(r = r_values) |> 
+  ggplot(aes(x = r)) +
+  geom_histogram(fill = "grey", color = "darkgrey") +
+  geom_vline(xintercept = actual_r, color = "red", linetype="dashed") +
+  theme_bw()
+
+  mtcars2 <- c(r_values, result$r)  # Append the r value to the vector
+p2 <- data.frame(r = mtcars2) |> 
+  ggplot(aes(x = r)) +
+  geom_histogram(fill = "grey", color = "darkgrey") +
+  geom_vline(xintercept = actual_r, color = "red", linetype="dashed") +
+  theme_bw()
+
+p
+p2
+```
+
+```{r}
+
+```

@@ -1,0 +1,85 @@
+---
+title: "Test analysis"
+output: html_document
+date: "2023-10-25"
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Read Data#
+other_self <- readr::read_csv('/cloud/project/data/sub_9999_harm_other_all_unsorted.csv')
+self_other <- readr::read_csv('/cloud/project/data/sub_9999_harm_self_all_unsorted.csv')
+other_other <- readr::read_csv('/cloud/project/data/sub_9999_other_all_unsorted.csv')
+self_self <- readr::read_csv('/cloud/project/data/sub_9999_self_all_unsorted.csv')
+```
+
+```{r}
+#Tidy and rename
+colnames(other_self, self_self)[1] <- "trial"
+colnames(other_self)[5] <- "accept"
+colnames(other_self)[6] <- "punishment"
+colnames(other_self)[8] <- "reward"
+colnames(other_self)[10] <- "ratio"
+colnames(other_self)[11] <- "prob_reject"
+colnames(other_self)[12] <- "prob_accept"
+colnames(self_other)[1] <- "trial"
+colnames(self_other)[5] <- "accept"
+colnames(self_other)[6] <- "punishment"
+colnames(self_other)[8] <- "reward"
+colnames(self_other)[10] <- "ratio"
+colnames(self_other)[11] <- "prob_reject"
+colnames(self_other)[12] <- "prob_accept"
+colnames(other_other)[1] <- "trial"
+colnames(other_other)[5] <- "accept"
+colnames(other_other)[6] <- "punishment"
+colnames(other_other)[8] <- "reward"
+colnames(other_other)[10] <- "ratio"
+colnames(other_other)[11] <- "prob_reject"
+colnames(other_other)[12] <- "prob_accept"
+colnames(self_self)[1] <- "trial"
+colnames(self_self)[5] <- "accept"
+colnames(self_self)[6] <- "punishment"
+colnames(self_self)[8] <- "reward"
+colnames(self_self)[10] <- "ratio"
+colnames(self_self)[11] <- "prob_reject"
+colnames(self_self)[12] <- "prob_accept"
+
+#Unused attempt to combine tibbles
+comb_tib <- other_other %>%
+         select(tib_column1) %>%
+         bind_cols(tibble2 %>%
+                      select(tib_column2))
+#Unused column selection
+other_self <- subset(other_self[ , c(18:28,132:144,154,188:190)])
+self_other <- subset(self_other[ , c(18:28,132:144,154,188:190)])
+other_other <- subset(other_other[ , c(18:28,132:144,154,188:190)])
+self_self <- subset(self_self[ , c(18:28,132:144,154,188:190)])
+```
+
+
+```{r}
+var.test(self_self$accept, self_other$accept)
+var.test(self_self$accept, other_self$accept)
+var.test(self_self$accept, other_other$accept)
+
+
+
+t.test(self_self$accept, self_other$accept)
+t.test(self_self$accept, other_self$accept)
+t.test(self_self$accept, other_other$accept)
+
+t.test(self_other$accept, self_self$accept)
+t.test(self_other$accept, other_self$accept)
+t.test(self_other$accept, other_other$accept)
+
+t.test(other_self$accept, self_self$accept)
+t.test(other_self$accept, self_other$accept)
+t.test(other_self$accept, other_other$accept)
+
+t.test(other_other$accept, self_self$accept)
+t.test(other_other$accept, self_other$accept)
+t.test(other_other$accept, other_self$accept)
+```
+

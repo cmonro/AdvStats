@@ -1,0 +1,392 @@
+---
+title: "Dissertation Analysis"
+author: "CM793"
+date: "2023-04-23"
+always_allow_html: true
+output:
+  pdf_document: default
+  html_document: default
+  
+---
+
+1. The predicted values from the model (x-axis) against the residuals (y-axis). Use     this plot to look for linearity and homoscedasticity.
+2. A Q-Q plot of the standardized residuals. Use this plot to look for normality of    residuals.
+3. The predicted values from the model (x-axis) against the square root of the     standardized residuals (y-axis). This is a variant of plot 1 and is used to look  for linearity and homoscedasticity.
+4. The case number (x-axis) against the Cooks distance (y-axis). This plot can help    to identify influential cases (cases with large values for Cooks distance).
+5. The leverage value for each case (x-axis) against the standardized residual  (y-axis). This plot is used to identify influential cases and outliers. Leverage  values indicate the influence of an individual case on the model and are related to  Cook’s distance.
+6. The leverage value for each case (x-axis) against the corresponding Cooks distance (y-axis). This plot is used to identify influential cases and outliers.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#Packages and data
+library(knitr)
+library(dplyr)
+library(readxl)
+library(readr)
+library(tidyr)
+library(plyr)
+library(lavaan)
+library(lavaanPlot)
+library(ltm)
+library(rmarkdown)
+library(apaTables)
+library(BayesFactor)
+library(parameters)
+
+#Read Data#
+DATA_Xl <- readxl::read_excel('/cloud/project/data/Student perception of employability in elite professions_March 13, 2023_09.58.xlsx')
+```
+
+```{r}
+#Clean Data
+
+#Filter by completed responses
+DATA_nona <- tidyr::drop_na(DATA_Xl, "Elite_Employ_16", "Prosociality & Polit_30")
+
+#Filter by provided consent
+DATA_con <- dplyr::filter(DATA_nona, C1==2, C2==2, C3==2, C4==2, C5==2, C6==2, C7==2)
+```
+
+```{r}
+#Participant information viewing
+
+#Subject
+table(DATA_con$Subjects)
+
+#Age by gender 1=Male 2=Female 3=Non-Binary
+Num_info <- DATA_con %>% mutate_if(is.character, as.numeric)
+Num_info %>% 
+  dplyr::group_by(Gender) %>% 
+  dplyr::summarise(
+    Mean_age = mean(Age),
+    SD_age = sd(Age),
+    Number = dplyr::n()
+  )
+
+#Age
+Num_info %>%
+  dplyr::summarise(
+    Mean_age = mean(Age),
+    SD_age = sd(Age),
+    Number = dplyr::n()
+  )
+```
+
+```{r}
+#Internal consistency of Pol/Soc and Employability
+
+#Cronbachs alpha
+SocScale <- data.frame(DATA_con[,c(102:107,111,113,118,120,122,124:125,129:130)])
+ltm::cronbach.alpha(SocScale, na.rm=T)
+
+PolScale <- data.frame(DATA_con[,c(108:110,112,114:117,119,121,123,126:128,131)])
+ltm::cronbach.alpha(PolScale, na.rm=T)
+
+EltScale <- data.frame(DATA_con[,c(172:187)])
+ltm::cronbach.alpha(EltScale, na.rm=T)
+
+#All three good internal consistency
+```
+
+```{r}
+# Creating mean variables for Pol/Soc and Employability and tidy columns
+
+#set as numeric
+df <- DATA_con %>% mutate_if(is.character, as.numeric) 
+
+#Pol & Soc means
+df$Socmean <-apply(df[,c(102:107,111,113,118,120,122,124:125,129:130)],1,mean, na.rm=T, digits=3)
+df$Polmean <-apply(df[,c(108:110,112,114:117,119,121,123,126:128,131)],1,mean, na.rm=T, digits=3)
+
+#Elite employability means
+df$Eltmean <-apply(df[,c(172:187)],1,mean, na.rm=T, digits=3)
+
+#Standardised values -changes b but not p or f
+df$Socmean <- (df$Socmean - mean(df$Socmean)) / sd(df$Socmean)
+df$Polmean <- (df$Polmean - mean(df$Polmean)) / sd(df$Polmean)
+df$Eltmean <- (df$Eltmean - mean(df$Eltmean)) / sd(df$Eltmean)
+
+#Tidy columns
+DATA_rel <- subset(df[ , c(18:28,132:144,154,188:190)])
+                   
+```
+
+```{r}
+#Evaluating and creating mean variables for SEC
+
+
+#recode education and tuition
+DATA_rel$Education <- recode(DATA_rel$Education, '2'=1, '3'=2, '1'=3)
+DATA_rel$Tuition <- recode(DATA_rel$Tuition, '2'=1, '1'=2)
+
+#standardised values
+DATA_rel$StdEdu <- (DATA_rel$Education - mean(DATA_rel$Education)) / sd(DATA_rel$Education)
+DATA_rel$StdTui <- (DATA_rel$Tuition - mean(DATA_rel$Tuition)) / sd(DATA_rel$Tuition)
+DATA_rel$StdPar <- (DATA_rel$`Parents education` - mean(DATA_rel$`Parents education`)) / sd(DATA_rel$`Parents education`)
+DATA_rel$StdInc <- (DATA_rel$`Household income` - mean(DATA_rel$`Household income`)) / sd(DATA_rel$`Household income`)
+DATA_rel$StdCla <- (DATA_rel$`Social class` - mean(DATA_rel$`Social class`)) / sd(DATA_rel$`Social class`)
+DATA_rel$StdLad <- (DATA_rel$`MacArthur Scale` - mean(DATA_rel$`MacArthur Scale`)) / sd(DATA_rel$`MacArthur Scale`)
+
+#cronbach's alpha
+ObjScale1 <- data.frame(DATA_rel[,c(29,30,31,32)])
+ltm::cronbach.alpha(ObjScale1, na.rm=T) #Poor
+ObjScale2 <- data.frame(DATA_rel[,c(30,31,32)])
+ltm::cronbach.alpha(ObjScale2, na.rm=T) #good
+ObjScale3 <- data.frame(DATA_rel[,c(31,32)])
+ltm::cronbach.alpha(ObjScale3, na.rm=T) #worse
+ObjScale4 <- data.frame(DATA_rel[,c(30,31)])
+ltm::cronbach.alpha(ObjScale4, na.rm=T) #Best
+#Tuition (30) and parents education (31) best internal consistency
+
+SubScale <- data.frame(DATA_con[,c(33:34)])
+ltm::cronbach.alpha(SubScale, na.rm=T)
+#Poor internal consistency
+
+#standardised coefficients 
+Obj_lm1 <- lm(Eltmean ~ StdEdu + StdTui + StdPar + StdInc, data= DATA_rel, na.action= na.exclude) 
+summary(Obj_lm1)
+Obj_lm2 <- lm(Eltmean ~ StdTui + StdPar + StdInc, data= DATA_rel, na.action= na.exclude) #remove education
+summary(Obj_lm2) #Mildly better R2, mid better P
+Obj_lm3 <- lm(Eltmean ~ StdPar + StdInc, data= DATA_rel, na.action= na.exclude) #Remove parent education
+summary(Obj_lm3) #Worse R2 and worse P
+Obj_lm4 <- lm(Eltmean ~ StdTui + StdPar, data= DATA_rel, na.action= na.exclude) #Remove income
+summary(Obj_lm4) #Best R2 and best P
+#Concl = Tuition & parents education best
+
+Sub_lm1 <- lm(Eltmean ~ StdLad, data= DATA_rel, na.action= na.exclude) 
+summary(Sub_lm1) #wrse R2 and P
+Sub_lm2 <- lm(Eltmean ~ StdCla, data= DATA_rel, na.action= na.exclude) 
+summary(Sub_lm2)#better R2 and P
+Sub_lm3 <- lm(Eltmean ~ StdLad*StdCla, data= DATA_rel, na.action= na.exclude) 
+summary(Sub_lm3) #wrse R2 and P
+#Concl = class better than ladder
+
+
+#CONCLUSION: Only use tuition and parents education for objective, only use Class and ladder for subjective
+
+#Creating aggregate value
+DATA_rel$ObjClass <-apply(DATA_rel[,c(30:31)],1,mean, na.rm=T, digits=3) #Create Class aggregate value - standardised class values
+DATA_rel$SubClass <-apply(DATA_rel[,c(33,34)],1,mean, na.rm=T, digits=3) #Create Class aggregate value - standardised class values
+
+```
+
+```{r}
+#Assumption plotting
+
+Asmp1 <- lm(Eltmean ~ ObjClass + Polmean + Socmean, data= DATA_rel, na.action= na.exclude)
+plot(Asmp1, which = c(1,2,3,4,5,6)) #for obj
+#Checking Normal residuals
+summary(DATA_rel$Eltmean - Asmp1$fitted.values) #non linear by ~1/5b
+
+Asmp2 <- lm(Eltmean ~ SubClass + Polmean + Socmean, data= DATA_rel, na.action= na.exclude)
+plot(Asmp2, which = c(1,2,3,4,5,6)) #for sub
+#Checking Normal residuals
+summary(DATA_rel$Eltmean - Asmp2$fitted.values) #non linear by ~1/3b
+```
+
+```{r}
+#Correlation matrix - Using unstandardised values
+
+#set as numeric
+apacor <- DATA_con %>% mutate_if(is.character, as.numeric) 
+
+#Pol & Soc means
+apacor$Socmean <-apply(apacor[,c(102:107,111,113,118,120,122,124:125,129:130)],1,mean, na.rm=T, digits=3)
+apacor$Polmean <-apply(apacor[,c(108:110,112,114:117,119,121,123,126:128,131)],1,mean, na.rm=T, digits=3)
+#Elite employability means
+apacor$Eltmean <-apply(apacor[,c(172:187)],1,mean, na.rm=T, digits=3)
+
+PearCorDat <- subset(apacor[ , c(23:28, 188:190)])
+
+
+apacortab <- apa.cor.table(PearCorDat, filename = "CorTable.doc")
+
+
+```
+
+```{r}
+#Simple 1 way ANOVAs
+apaLmObj <- lm(Eltmean ~ ObjClass, data= DATA_rel, na.action= na.exclude)
+apaLmSub <- lm(Eltmean ~ SubClass, data= DATA_rel, na.action= na.exclude)
+
+parameters::model_parameters(apaLmObj, bootstrap = TRUE, digits = 3)
+
+summary(apaLmObj)
+summary(apaLmSub)
+confint(apaLmObj)
+confint(apaLmSub)
+parameters::model_parameters(apaLmObj, bootstrap = TRUE, digits = 3)
+parameters::model_parameters(apaLmSub, bootstrap = TRUE, digits = 3)
+
+
+```
+
+
+```{r}
+#Mediation
+
+#Mediation of polbeh & Eltemp for objective class
+PolObjmodel <- "Eltmean ~ c*ObjClass + b*Polmean  
+                   Polmean ~ a*ObjClass
+
+                   indirect_effect := a*b
+                   total_effect := c + (a*b)"
+
+# fit the model with FIML and robust SEs
+PolObjMed <- lavaan::sem(PolObjmodel, data = DATA_rel, missing = "FIML", estimator = "MLR")
+
+#summarize the model (and round values for convenience)
+broom::glance(PolObjMed) |>  knitr::kable(digits = 3)
+broom::tidy(PolObjMed, conf.int = TRUE) |>  knitr::kable(digits = 3)
+######################################################
+######################################################
+#Mediation of Socbeh & Eltemp for objective class
+SocObjmodel <- "Eltmean ~ c*ObjClass + b*Socmean  
+                   Socmean ~ a*ObjClass
+
+                   indirect_effect := a*b
+                   total_effect := c + (a*b)"
+
+# fit the model with FIML and robust SEs
+SocObjMed <- lavaan::sem(SocObjmodel, data = DATA_rel, missing = "FIML", estimator = "MLR")
+
+#summarize the model (and round values for convenience)
+broom::glance(SocObjMed) |>  knitr::kable(digits = 3)
+broom::tidy(SocObjMed, conf.int = TRUE) |>  knitr::kable(digits = 3)
+######################################################
+######################################################
+#Mediation of polbeh & Eltemp for subjective class
+PolSubmodel <- "Eltmean ~ c*SubClass + b*Polmean  
+                   Polmean ~ a*SubClass
+
+                   indirect_effect := a*b
+                   total_effect := c + (a*b)"
+
+# fit the model with FIML and robust SEs
+PolSubMed <- lavaan::sem(PolSubmodel, data = DATA_rel, missing = "FIML", estimator = "MLR")
+
+#summarize the model (and round values for convenience)
+broom::glance(PolSubMed) |>  knitr::kable(digits = 3)
+broom::tidy(PolSubMed, conf.int = TRUE) |>  knitr::kable(digits = 3)
+######################################################
+######################################################
+#Mediation of socbeh & Eltemp for subjective class
+SocSubmodel <- "Eltmean ~ c*SubClass + b*Socmean  
+                   Socmean ~ a*SubClass
+
+                   indirect_effect := a*b
+                   total_effect := c + (a*b)"
+
+# fit the model with FIML and robust SEs
+SocSubMed <- lavaan::sem(SocSubmodel, data = DATA_rel, missing = "FIML", estimator = "MLR")
+
+#summarize the model (and round values for convenience)
+broom::glance(SocSubMed) |>  knitr::kable(digits = 3)
+broom::tidy(SocSubMed, conf.int = TRUE) |>  knitr::kable(digits = 3)
+```
+
+```{r}
+#bootstrapped mediation 
+######################################################
+#Bootstrapped Mediation of polbeh & Eltemp for objective class
+# fit the model with FIML and CHANGED TO NON ROBUST SE (ML)
+PolObjBoot <- lavaan::sem(PolObjmodel, data = DATA_rel, test = "bootstrap",
+                         bootstrap = 5000, estimator = "ML")
+
+#summarize the model (and round values for convenience)
+broom::glance(PolObjBoot) |>  knitr::kable(digits = 3)
+broom::tidy(PolObjBoot, conf.int = TRUE) |>  knitr::kable(digits = 3)
+######################################################
+######################################################
+#Bootstrapped Mediation of Socbeh & Eltemp for objective class
+# fit the model with FIML and CHANGED TO NON ROBUST SE (ML)
+SocObjBoot <- lavaan::sem(SocObjmodel, data = DATA_rel, test = "bootstrap",
+                         bootstrap = 5000, estimator = "ML")
+
+#summarize the model (and round values for convenience)
+broom::glance(SocObjBoot) |>  knitr::kable(digits = 3)
+broom::tidy(SocObjBoot, conf.int = TRUE) |>  knitr::kable(digits = 3)
+######################################################
+######################################################
+#Bootstrapped Mediation of polbeh & Eltemp for subjective class
+# fit the model with FIML and CHANGED TO NON ROBUST SE (ML)
+PolSubBoot <- lavaan::sem(PolSubmodel, data = DATA_rel, test = "bootstrap",
+                         bootstrap = 5000, estimator = "ML")
+
+#summarize the model (and round values for convenience)
+broom::glance(PolSubBoot) |>  knitr::kable(digits = 3)
+broom::tidy(PolSubBoot, conf.int = TRUE) |>  knitr::kable(digits = 3)
+######################################################
+######################################################
+#Bootstrapped Mediation of socbeh & Eltemp for subjective class
+# fit the model with FIML and CHANGED TO NON ROBUST SE (ML)
+SocSubBoot <- lavaan::sem(SocSubmodel, data = DATA_rel, test = "bootstrap",
+                         bootstrap = 5000, estimator = "ML")
+
+#summarize the model (and round values for convenience)
+broom::glance(SocSubBoot) |>  knitr::kable(digits = 3)
+broom::tidy(SocSubBoot, conf.int = TRUE) |>  knitr::kable(digits = 3)
+```
+
+```{r}
+#Simple slopes analysis
+
+library(ggeffects)
+#For lower, median and upper quartile of behaviour
+ss1 <- lm(Eltmean ~ ObjClass + Polmean + ObjClass:Polmean, data= DATA_rel, na.action= na.exclude)
+ggpredict(ss1, terms = c("ObjClass[-2:2 by=0.1]", "Polmean[quart2]"), labels = labels1) |> plot(colors = "bw")
+
+ss2 <- lm(Eltmean ~ ObjClass + Socmean + ObjClass:Socmean, data= DATA_rel, na.action= na.exclude)
+ggpredict(ss2, terms = c("ObjClass[-2:2 by=0.1]", "Socmean[quart2]")) |> plot(colors = "bw")
+
+ss3 <- lm(Eltmean ~ SubClass + Polmean + SubClass:Polmean, data= DATA_rel, na.action= na.exclude)
+ggpredict(ss3, terms = c("SubClass[-2:2 by=0.1]", "Polmean[quart2]")) |> plot(colors = "bw")
+
+ss4 <- lm(Eltmean ~ SubClass + Socmean + SubClass:Socmean, data= DATA_rel, na.action= na.exclude)
+ggpredict(ss4, terms = c("SubClass[-2:2 by=0.1]", "Socmean[quart2]")) |> plot(colors = "bw")
+```
+
+```{r}
+#Mediation Plotting
+
+labels1 <- list(ObjClass = "Objective SEC", Polmean = "Political Behaviour", Eltmean = "Employability")
+lavaanPlot(model = PolObjMed, labels = labels1, node_options = list(shape = "box", fontname = "Helvetica"), edge_options = list(color = "grey"), coefs = TRUE, digits=3, stars="regress")
+
+labels2 <- list(ObjClass = "Objective SEC", Socmean = "Pro-social Behaviour", Eltmean = "Employability")
+lavaanPlot(model = SocObjMed, labels = labels2, node_options = list(shape = "box", fontname = "Helvetica"), edge_options = list(color = "grey"), coefs = TRUE, digits=3, stars="regress")
+
+labels3 <- list(SubClass = "Subjective SEC", Polmean = "Political Behaviour", Eltmean = "Employability")
+lavaanPlot(model = PolSubMed, labels = labels3, node_options = list(shape = "box", fontname = "Helvetica"), edge_options = list(color = "grey"), coefs = TRUE, digits=3, stars="regress")
+
+labels4 <- list(SubClass = "Subjective SEC", Socmean = "Pro-social Behaviour", Eltmean = "Employability")
+lavaanPlot(model = SocSubMed, labels = labels4, node_options = list(shape = "box", fontname = "Helvetica"), edge_options = list(color = "grey"), coefs = TRUE, digits=3, stars="regress")
+
+```
+
+```{r}
+#Bayes significance testing
+
+Bftest1 <- BayesFactor::regressionBF(Polmean ~ ObjClass, rscaleCont = "medium", data = DATA_rel)
+head(Bftest1, n=1)
+Bftest2 <- BayesFactor::regressionBF(Eltmean ~ Polmean, rscaleCont = "medium", data = DATA_rel)
+head(Bftest2, n=1)
+
+Bftest3 <- BayesFactor::regressionBF(Socmean ~ ObjClass, rscaleCont = "medium", data = DATA_rel)
+head(Bftest3, n=1)
+Bftest4 <- BayesFactor::regressionBF(Eltmean ~ Socmean, rscaleCont = "medium", data = DATA_rel)
+head(Bftest4, n=1)
+
+Bftest5 <- BayesFactor::regressionBF(Polmean ~ SubClass, rscaleCont = "medium", data = DATA_rel)
+head(Bftest5, n=1)
+Bftest6 <- BayesFactor::regressionBF(Eltmean ~ Polmean, rscaleCont = "medium", data = DATA_rel)
+head(Bftest6, n=1)
+
+Bftest7 <- BayesFactor::regressionBF(Socmean ~ SubClass, rscaleCont = "medium", data = DATA_rel)
+head(Bftest7, n=1)
+Bftest8 <- BayesFactor::regressionBF(Eltmean ~ Socmean, rscaleCont = "medium", data = DATA_rel)
+head(Bftest8, n=1)
+```

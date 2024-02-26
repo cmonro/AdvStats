@@ -1,0 +1,177 @@
+---
+title: "quarto week 6"
+format: html
+editor: visual
+---
+
+```{r}
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+```
+
+## Discovr_09 - T-tests
+
+```{r}
+#summary statistics
+fake_sum <- fake_data |> 
+  dplyr::group_by(gender) |> 
+  dplyr::summarize(
+    n = n(),
+    mean = mean(stats_skill),
+    ci_lower = ggplot2::mean_cl_normal(stats_skill)$ymin,
+    ci_upper = ggplot2::mean_cl_normal(stats_skill)$ymax
+  )
+
+fake_sum |> 
+  knitr::kable(digits = 2)
+```
+
+```{r}
+#Violin plots
+ggplot2::ggplot(fake_data, aes(gender, stats_skill)) +
+  geom_violin() +
+  stat_summary(fun.data = "mean_cl_normal") +
+  labs(x = "Gender", y = "Stats Skill") +
+  theme_minimal()
+```
+
+```{r}
+#T-test
+
+#cut out 3rd gender >:(
+ttest_tib <- fake_data |> slice(-c(41:50))
+
+#independant t test
+indi_model <- t.test(stats_skill ~ gender,
+                    data = ttest_tib,
+                    paired = F,
+                    var.equal = FALSE,
+                    conf.level = 0.95,
+                    na.action = na.exclude)
+indi_model
+
+# Paired T test arranging by Px number
+paired_model <- ttest_tib |> 
+  dplyr::arrange(participant) |>
+  t.test(stats_skill ~ gender, data = _, paired = TRUE)
+paired_model
+
+#Confidence interval interpretation:
+#If this confidence interval is one of the 95% that contains the population value then the population value of the difference between group means lies between -1.97 to -0.54.
+```
+
+```{r}
+#Post hoc effect sizes
+
+#glass_delta(). This function uses only the control group standard deviation so should be used when group standard deviations are very different (or you expect your experimental manipulation to affect both the mean and the standard deviation of scores). It will use the first level of the grouping variable as the control (in this case the no cloak group). Therefore, we could execute:
+#cohens_d(). This function uses (by default) the pooled standard deviation. d is the difference between two means expressed in standard deviation units. d can be computed using a control group standard deviation, the standard deviation of all scores or a pooled standard deviation.
+#hedges_g(). This function applies a correction to Cohen’s d that is less biased for samples less than about 20.
+
+effectsize::cohens_d(stats_skill ~ gender,
+                     data = ttest_tib,
+                     pooled_sd = TRUE,
+                     paired = FALSE)
+#For both: don't need to set paired to true, ever?
+effectsize::hedges_g(stats_skill ~ gender,
+                     data = ttest_tib,
+                     pooled_sd = TRUE,
+                     paired = FALSE)
+
+effectsize::glass_delta(stats_skill ~ gender,
+                        data = ttest_tib)
+```
+
+## Discovr_11 - ANOVA - dummy coding & contrast coding
+
+```{r}
+#Dummy coding - requires significance correction
+#as factor
+fake_data$gender <- as.factor(fake_data$gender)
+
+#Summary ststistics
+# Solution
+fake_data |> 
+  dplyr::group_by(gender) |> 
+  dplyr::summarize(
+    mean = mean(stats_skill, na.rm = TRUE),
+    `95% CI lower` = mean_cl_normal(stats_skill)$ymin,
+    `95% CI upper` = mean_cl_normal(stats_skill)$ymax
+  ) |> 
+  knitr::kable(digits = 3) # to round values
+
+
+#Check levels
+levels(fake_data$gender)
+
+## Fit model
+fake_lm <- lm(stats_skill ~ gender, data = fake_data, na.action = na.exclude)
+
+#Overall fit
+anova(fake_lm) |> 
+  parameters::model_parameters(effectsize_type = "omega", partial=T) |> 
+  knitr::kable(digits = 3) # to round values
+#F statistic
+#It is the ratio of the variance in happiness explained by the model to the variance that is unexplained (the error).
+
+
+#Model parameters and CIs
+broom::tidy(fake_lm, conf.int = TRUE) |> 
+  knitr::kable(digits = 3) # to round values
+#estimates are just differences in means, really interested in p value
+
+```
+
+```{r}
+#contrast coding - does NOT require significance correction
+#as factor
+fake_data$gender <- as.factor(fake_data$gender)
+
+#Check levels
+levels(fake_data$gender)
+
+#Set contrasts
+man_vs_other <- c(-2/3, 1/3, 1/3)
+enby_vs_woman <- c(0, -1/2, 1/2)
+contrasts(fake_data$gender) <- cbind(man_vs_other, enby_vs_woman)
+contrasts(fake_data$gender) # This line prints the contrast weights so we can check them
+
+## Fit model
+fake_lm <- lm(stats_skill ~ gender, data = fake_data, na.action = na.exclude)
+
+#Overall fit
+anova(fake_lm) |> 
+  parameters::model_parameters(effectsize_type = "omega", partial=T) |> 
+  knitr::kable(digits = 3) # to round values
+#F statistic
+#It is the ratio of the variance in happiness explained by the model to the variance that is unexplained (the error).
+
+
+#Model parameters and CIs
+broom::tidy(fake_lm, conf.int = TRUE) |> 
+  knitr::kable(digits = 3) # to round values
+#estimates (tvalue) are just differences in means, really interested in p value
+
+
+```
+
+```{r}
+#Polynomial contrasts
+#set contrast
+contrasts(fake_data$gender) <- contr.poly(3)
+
+#fit model
+fake_trend <- lm(stats_skill ~ gender, data = fake_data)
+
+anova(fake_trend) |> 
+  parameters::parameters(omega_squared = "raw") |> 
+  knitr::kable(digits = 3) #only necessary to round values
+
+broom::tidy(fake_trend, conf.int = TRUE) |> 
+  knitr::kable(digits = 3) #only necessary to round values
+```
+
+```{r}
+#Post-hoc tests
+
+modelbased::estimate_contrasts(fake_lm, contrast = "gender", p_adjust = "bonferroni") |>
+   knitr::kable(digits = 3) #to round values
+```

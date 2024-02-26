@@ -1,0 +1,62 @@
+---
+title: "My First Quarto Document"
+author: "Andy Field"
+format: 
+  html:
+    self-contained: true
+    theme: darkly
+    code-fold: true
+    toc: true
+editor: visual
+bibliography: references.bib
+---
+
+```{r}
+library(readr)
+
+eddie_tib <- here::here("data/eddiefy.csv") |> readr::read_csv()
+```
+
+# All about Iron Maiden
+
+## Band Members
+
+Our favourite members are:
+
+-   Adrian Smith
+
+-   Dave Murray
+
+## Logo
+
+![Figure 1: The band's logo](images/iron_maiden_logo.png)
+
+## Our favourite albums
+
+1.  Piece of Mind
+
+2.  [The Number of the Beast](www.ironmaiden.com)
+
+## Lyrics
+
+> Do not waste your time searching for those wasted years
+
+## Some data about Iron Maiden
+
+I made this table using the tidyverse [@tidyverse] package.
+
+```{r}
+eddie_tib |>
+  dplyr::sample_n(10) |> 
+  knitr::kable(caption = "Spotify data for the band Iron Maiden", digits = 2)
+```
+
+::: callout-warning
+## Fun Fact
+
+When Andy was 13, he met Iron Maiden. There is a photo of his text book. There is not a photo in @Belmi2016
+:::
+
+$$
+\text{Happy} = \hat{b}_{Hats}+ \hat{b}_0\text{Iron Maiden} + \alpha + \beta + \omega + \sigma + \epsilon + \varepsilon
+$$

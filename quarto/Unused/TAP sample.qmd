@@ -1,0 +1,259 @@
+---
+title: "TAP 01 Report"
+author: "Candidate 277353"
+format: 
+  html:
+    self-contained: true
+    theme: united
+    code-fold: false
+    toc: true
+editor: visual
+---
+
+```{r}
+#Packages
+library(broom) 
+library(dplyr) 
+library(kableExtra)
+library(ggfortify)
+library(parameters)
+```
+
+```{r}
+# load data
+mindful_tib <- here::here("data/tap_mindfulness.csv") |>
+  readr::read_csv()
+mutate(dplyr::filter(mindful_tib, time=='Follow-up'))
+```
+
+# TAP 01 - Candidate 277353
+
+## **Analysis plan**
+
+The research team are testing the following hypothesis:
+
+-   H~1~: The parent's baseline belief in their ability to succeed in implementing positive praise `efficacy` will be predicted by their `positivity` towards positive praise as a parenting technique.
+
+    To test this hypotheses, the data will be fitted to a general linear model (GLM) using `efficacy` as the outcome variable and `positivity` as the predictor variable.
+
+The linear regression model the data will be fitted to is:
+
+$\text{Efficacy}_{i} = \hat{b}_0+ \hat{b}_{1} \text{positivity}_i + error_i$
+
+Summary statistics of the data will be computed and presented as follows:
+
+-   A density plot of `efficacy` to visualise the distribution. This also allows testing for skewness and kurtosis. The GLM model being fitted does not require normally distributed variables but skewed or non-mesokurtic (non-average kurtosis) variable distribution may indicate that normal residual assumptions will be violated. A Q-Q plot, mentioned below, is a better test of this.
+
+-   A density plot of `positivity` to visualise the distribution. Also to test for skewness and kurtosis, as above.
+
+-   Descriptive statistics (mean, standard deviation, inter-quartile range, skewness and kurtosis) of `efficacy` and `positivity` to display numeric values of any deviation from normal distribution and evaluate the sample distributions.
+
+The GLM being fitted will be used to look for a significant interaction (p ≤ .05) between `efficacy` and `positivity`. If a significant interaction is found, the consequence of the regression coefficient will be discussed. The GLM makes several assumptions about the data, they will be assessed, in order of most important to least important, as follows:
+
+-   **Linearity & Homoscedasticity**: These assumptions will be checked by plotting the predicted model values against the square root of the standardized residuals. If the assumptions have been met, the plotted values would be evenly distributed with no curved (non-linearity) or cone-shaped (heteroscedasticity) pattern to the values. If the linearity or homoscedasticity assumptions are violated, logarithmic, square root or other transformation of the outcome variable will be used.
+
+-   **Independent errors**: This assumption will be checked by plotting Cook's distance values against each case number. Any cases with a cook's distance ≥ 1 will be considered a highly influential outlier and violate the assumption. Any cases that violate this assumption will be excluded from the data when fitting the model.
+
+-   **Normality of errors**: This assumption will be checked by a Q-Q plot of the standardised deviance residual against normal theoretical quantiles. For the assumption to be met, the plotted values would sit along the solid line. If this assumption is violated the parameter estimates will still match the expected population value and minimise the squared error so no correction is necessary.
+
+## **Coding**
+
+This section of the report includes creation of summary statistics, fitting of the GLM and checking of the model assumptions. Results and analysis will be reported in \[Results\].
+
+### Summary statistics and data visualization
+
+```{r}
+# Initial plots
+
+# frequency plot of efficacy
+efficacy_dty <- ggplot(parenting_tib, aes(x = efficacy)) +
+  geom_bar(fill = "plum", alpha = 0.5, colour = "red") +
+  scale_x_continuous(breaks =0:10) +
+  scale_y_continuous(breaks = seq(0, 400, 50)) +
+  labs(y = "Frequency", x = "parent baseline belief in ability") +
+  theme_minimal()
+
+# frequency plot of positivity
+positivity_dty <- ggplot(parenting_tib, aes(x = positivity)) +
+  geom_bar(fill = "plum", alpha = 0.5, colour = "red") +
+  scale_x_continuous(breaks =0:10) +
+  scale_y_continuous(breaks = seq(0, 400, 50)) +
+  labs(y = "Frequency", x = "Parent Positivity") +
+  theme_minimal()
+
+# table of descriptives by intervention
+#desc_tbl2 <- parenting_tib |> 
+ # group_by(intervention) |> 
+ # describe_distribution(efficacy) |> 
+#  mutate(
+ #   intervention = gl(2, 1, labels = c("Group", "Leaflet")),
+#  ) |> 
+ # select(intervention, Mean:n)
+
+
+desc_tbl <- parenting_tib |>
+select(positivity, efficacy) |> 
+describe_distribution()
+
+
+
+# Duration as a function of symptoms
+#dur_symp_gg <- ggplot(covid_tib, aes(y = log(duration), x = symptoms)) +
+ # stat_summary(fun = "mean", colour = "#136CB9", alpha = 0.5) +
+  #geom_smooth(method = "lm", se = F, formula = y ~ x, colour = "#CA3E34") +
+ # labs(y = "Log(Mean symptom duration (days))", x = "Number of initial symptoms") +
+#  scale_y_continuous(breaks = seq(3, 3.7, 0.1)) +
+ # scale_x_continuous(breaks = 0:10) +
+  #coord_cartesian(xlim = c(0, 10), ylim = c(3, 3.7)) +
+  #theme_minimal()
+
+# Mean duration  by age
+#dur_age_gg <- ggplot(covid_tib, aes(y = log(duration), x = age)) +
+ # stat_summary(fun = "mean", colour = "#136CB9", alpha = 0.5) +
+  #geom_smooth(method = "lm", se = F, formula = y ~ x, colour = "#CA3E34") +
+  #labs(y = "Log(Mean symptom duration (days))", x = "Age (years)") +
+  #scale_y_continuous(breaks = seq(2.5, 4, 0.1)) +
+  #scale_x_continuous(breaks = seq(0, 80, 5)) +
+  #coord_cartesian(ylim = c(2.5, 4), xlim = c(0, 80)) +
+  #theme_minimal()
+```
+
+### Statistical models
+
+```{r}
+# Fit the model
+parenting_lm <- lm(efficacy ~ positivity, data = parenting_tib, na.action = na.exclude)
+
+
+  
+lm_tbl <- parenting_lm |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    caption = "Coefficient-Level Estimates for the linear regression model fitted to efficacy predicted by ",
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2)
+  )
+    
+# fit statistics and parameter estimates
+parenting_fit <- broom::glance(parenting_lm) #get fit statistics
+```
+
+### Model assumptions
+
+```{r}
+#Linearity and homoscedasticity
+lm_resid <- ggplot2::autoplot(parenting_lm,
+                  which = 3,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "plum") +
+    labs(y = "Square Root of the Standardized Residuals",
+         x = "Predicted Model Values") +
+  theme_minimal()
+
+#Independant Errors
+lm_cooks <- ggplot2::autoplot(parenting_lm,
+                  which = 4,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "plum") +
+    labs(y = "Cook's Distance",
+         x = "Case Number") +
+  theme_minimal()
+
+#Normality of errors
+# This plot shows a half-normal Q-Q plot of the absolute value of the standardized deviance residuals is shown
+lm_qq <- ggplot2::autoplot(parenting_lm,
+                  which = 2,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "plum") +
+    labs(y = "Standardised deviance residual", x = "Theoretical quantile") +
+  theme_minimal()
+```
+
+## **Results**
+
+### Summary statistics and data visualization
+
+The frequency plot of `efficacy`, @fig-1, shows that parent baseline belief in ability is fairly evenly distributed from 2 to 6. There is less frequency for 1 or 7 scores indicating that respondents may have not wanted to provide extreme answers. Future studies may wish to utilise 1-5 likert scales.
+
+```{r}
+#| fig-cap: "Frequency plot of efficacy"
+#| label: fig-1
+efficacy_dty
+```
+
+The frequency plot of `positivity`, @fig-2, shows that parent positivity is normally distributed around a mean of roughly 3.5 with a slight left skew. There is no apparent kurtosis.
+
+```{r}
+#| fig-cap: "Frequency plot of parent positivity"
+#| label: fig-2
+positivity_dty
+```
+
+Descriptive statistics in @tbl-desc confirm the distribution of `efficacy` and `positivity` shown in the plots above. `efficacy` (M = 3.96 SD = 1.79) has slight negative kurtosis and a large interquartile range but this is not an issue for the outcome variable in a GLM. `positivity` (M = 3.56 SD = 1.41) is slightly skewed but not more than a typical sample distribution.
+
+```{r}
+#| tbl-cap: "Descrptive statistics for efficacy and positivity"
+#| label: tbl-desc
+knitr::kable(desc_tbl, digits = 2) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+### Statistical models
+
+@tbl-fit shows statistics of how well the GLM fits the data. The r squared and adjusted r squared values are very low (r^2^ = .004 adj.r^2^ =.003), meaning that the model accounts for very little of the varience in `efficacy`. However, the F value (F~1,1739~ = 6.67 p = 0.01) indicates that the proportion of variance explained is larger than would be expected if there was no effect at all.
+
+```{r}
+#| tbl-cap: "Fit statistics for the model"
+#| label: tbl-fit
+knitr::kable(parenting_fit, digits = 3) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-lm shows the output of the fitted model. `efficacy` was significantly predicted by `positivity` 𝜷 = 0.08, 95% CI \[0.02, 0.14\], p = .010. The y intercept of the model is 3.68 meaning that if the value of `positivity` if 0, the model predicts that the value of `efficacy` will be 3.68. The 𝜷 value means that for each increase of 1 in `positivity` the model predicts `efficacy` will increase by 0.008. e.g. if `positivity` is 3, `efficacy` would be 3.68 + (3 x 0.08) = 3.92. The p value of 𝜷 is \< 0.05 meaning that if the null hypothesis was true, there is only a 5% chance that the value of 𝜷 would be as great or greater than was found by the model.
+
+```{r}
+#| tbl-cap: "Model output for the effect of positivity on efficacy"
+#| label: tbl-lm
+lm_tbl
+```
+
+### Model assumptions
+
+The assumptions of linearity & homoscedasticity were checked by plotting the predicted model values against the square root of the standardized residuals. The plot can be seen in @fig-3. The plotted values are fairly evenly distributed with little curved or cone-shaped pattern so these assumptions can be seen at met.
+
+```{r}
+#| fig-cap: "Plot of predicted model values against the square root of the standardized residuals"
+#| label: fig-3
+lm_resid
+```
+
+The assumption of independent errors was checked by plotting Cook's distance values against each case number. The plot can be seen in @fig-4. None of the cases have a Cook's distance greater than 1 so it can be seen that there are no highly influential outliers and that the assumption has been met.
+
+```{r}
+#| fig-cap: "Plot of Cook's distance values against each case number"
+#| label: fig-4
+lm_cooks
+```
+
+The assumption of normality of errors was checked by a Q-Q plot of the standardised deviance residual against normal theoretical quantiles. The plot can be seen in @fig-5. The plotted values sit close to the plotted line so this assumption can be seen as met.
+
+```{r}
+#| fig-cap: "Q-Q plot of the standardised deviance residual against normal theoretical quantiles"
+#| label: fig-5
+lm_qq
+```
+
+## Summary
+
+In summary, the hypothesis that `efficacy` is predicted by `positivity` was supported by the model. However only a small proportion of the variance in `efficacy` was explained by the model. Other variables not included in the model would likely account for more of the variance.
+
+The model assumptions of linearity, homoscedasticity, independent errors and normality of errors were met, suggesting that the fitted model was a good fit and predicted the effect of `positivity` on `efficacy` well.

@@ -1,0 +1,357 @@
+---
+title: "TAP 02 Report"
+author: "Candidate 277353"
+format: 
+  html:
+    self-contained: true
+    theme: united
+    code-fold: false
+    toc: true
+knitr:
+  opts_chunk: 
+    message: false
+    echo: true
+    warning: false
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#load packages
+library(broom) 
+library(dplyr) 
+library(kableExtra)
+library(ggfortify)
+library(parameters)
+```
+
+```{r}
+# load data
+mindful_tib <- here::here("data/tap_mindfulness.csv") |>
+  readr::read_csv() 
+
+#filter by 'Follow-up'
+mindful_tib <- mutate(dplyr::filter(mindful_tib, time=='Follow-up'))
+
+```
+
+# TAP 02 - Candidate 277353
+
+## **Analysis plan**
+
+The present research explore the efficacy of a mindfulness based intervention aimed at reducing stress in NHS staff. The intervention involved internet based mindfulness guidance and encouragement. An active control was used consisting of an internet based guide of psychosocial information and guidance to manage stress at work. Whether participants were assigned to the mindfulness guidance condition or to the psychosocial information control was recorded under the variable `trial_arm`. `Stress` was measured prior to the intervention, 1 month after the intervention implementation, and at a 4 month follow-up. Participants were categorised by `role` (management, medical (nurses, doctors, mental health practicioners), or support workers).
+
+The team tested the following hypothesis:
+
+-   H~1~: At follow-up participants' stress will be predicted by the programme to which they were assigned (`trial_arm`) but this effect will be moderated by their job role. Specifically, they predicted that the effect of `trial_arm` would be stronger in (1) medical roles compared to management and support worker roles; (2) management roles compared to support worker roles.
+
+To test this hypotheses, the data will be fitted to a general linear model (GLM) using `stress` as the outcome variable and using contrasts of `trial_arm` (mindfulness vs psychosocial information), `role` (medical vs other; management vs support), and the interaction effects of the two as predictor variables.
+
+The linear regression model the data will be fitted to is:
+
+$\text{Stress}_{i} = \hat{b}_0+ \hat{b}_{1} \text{trial arm}_i + \hat{b}_{2} \text{role}_i + \hat{b}_{2} \text{[trial arm x role]}_i + error_i$
+
+Summary statistics of the data will be computed and presented as follows:
+
+-   Violin plots of `stress`, grouped by `trial_arm` and `Role`. These plots will allow the distribution and confidence intervals to be assessed.
+
+-   A mean and confidence interval plot to view the confidence intervals with more precision.
+
+-   Descriptive statistics (number of observations, mean, confidence interval, and standard deviation) of `stress` grouped by `trial_arm` and `role`. This will provide numerical values of the distributions of `stress` when grouped by the predictor variables.
+
+The GLM being fitted will be used to look for significant interactions (p ≤ .05) between `stress` and `trial_arm` and between `stress` and the combined effect of `trial_arm` and `role`. If a significant interaction is found, a simple effects analysis will be run to assess effects of the each level of each predictor interaction and an omega squared analysis to assess the effect sizes of each predictor in the model.
+
+The GLM makes several assumptions about the data, they will be assessed, in order of most important to least important, as follows:
+
+-   **Linearity & Homoscedasticity**: These assumptions will be checked by plotting the predicted model values against the square root of the standardized residuals. If the assumptions have been met, the plotted values would be evenly distributed with no curved (non-linearity) nor cone-shaped (heteroscedasticity) pattern to the values. If the linearity or homoscedasticity assumptions are violated a robust model will be fitted and the resulting values compared to the non-robust model.
+
+-   **Independent errors**: This assumption will be checked by plotting Cook's distance values against each case number. Any cases with a cook's distance ≥ 1 will be considered highly influential outliers and will violate the assumption. Any cases that violate this assumption will be excluded from the data and the model will be refitted without them.
+
+-   **Normality of errors**: This assumption will be checked by a Q-Q plot of the standardised deviance residual against normal theoretical quantiles. For the assumption to be met, the plotted values would sit along the solid line. If this assumption is violated the parameter estimates will still match the expected population value and minimise the squared error so a correction is not necessary.
+
+## **Coding**
+
+This section of the report includes creation of summary statistics, fitting of the GLM, and checking of the model assumptions. Results and analysis will be reported under [Results](#results).
+
+### Summary statistics and data visualization
+
+```{r}
+# Violin Plot
+stress_viol <- ggplot2::ggplot(mindful_tib, aes(x = trial_arm, y = stress, colour = role)) +
+  geom_violin(alpha = 0.2) + 
+  stat_summary(fun.data = "mean_cl_normal", geom = "pointrange", position = position_dodge(width = 0.9)) +
+  coord_cartesian(ylim = c(0, 45)) +
+  scale_y_continuous(n.breaks = 6) +
+  labs(x = "Intervention Allocation", y = "Stress at Follow-up (0-42)", colour = "Job Role") +
+  theme_minimal()
+
+
+
+#Mean and CI Plot
+stress_ci <- ggplot2::ggplot(mindful_tib, aes(x = trial_arm, y = stress, colour = role)) +
+  stat_summary(fun.data = "mean_cl_normal", geom = "pointrange", position = position_dodge(width = 0.2)) +
+  coord_cartesian(ylim = c(10,30)) +
+  scale_y_continuous(breaks = c(5,10,15,20,25,30)) +
+  labs(x = "Intervention Allocation", y = "Stress at Follow-up (0-42)", colour = "Job Role") +
+  theme_minimal()
+
+
+#descriptive stats tables
+desc_tbl1 <- mindful_tib |> 
+  dplyr::group_by(role) |> 
+  dplyr::summarize(
+    n = n(),
+    mean = mean(stress),
+    ci_lower = ggplot2::mean_cl_normal(stress)$ymin,
+    ci_upper = ggplot2::mean_cl_normal(stress)$ymax,
+    sd(stress)
+  )
+
+desc_tbl2 <- mindful_tib |> 
+  dplyr::group_by(trial_arm) |> 
+  dplyr::summarize(
+    n = n(),
+    mean = mean(stress),
+    ci_lower = ggplot2::mean_cl_normal(stress)$ymin,
+    ci_upper = ggplot2::mean_cl_normal(stress)$ymax,
+    sd(stress)
+  )
+```
+
+### Statistical model
+
+```{r}
+#| output: false
+
+#set as factor
+mindful_tib$trial_arm <- as.factor(mindful_tib$trial_arm)
+mindful_tib$role <- as.factor(mindful_tib$role)
+
+#Check level order
+levels(mindful_tib$trial_arm)
+levels(mindful_tib$role)
+
+#set contrasts
+medical_vs_other <- c(-1/3, 2/3, -1/3)
+management_vs_support <- c(1/2, -1/2, 0)
+contrasts(mindful_tib$role) <- cbind(medical_vs_other, management_vs_support)
+contrasts(mindful_tib$trial_arm) <- c(1/2, -1/2)
+
+#check contrasts
+contrasts(mindful_tib$trial_arm)
+contrasts(mindful_tib$role)
+
+#Fit model
+mindful_lm <- lm(stress ~ trial_arm*role, data = mindful_tib)
+
+#F values
+tbl_f <- car::Anova(mindful_lm, type = 3)
+
+#B values
+tbl_b <- broom::tidy(mindful_lm)
+
+
+#obtain means across all combinations of levels
+contr_means <- modelbased::estimate_means(mindful_lm, at = c("trial_arm", "role"))
+
+
+#Simple effects analysis
+#by 'trail_arm'
+sea_trial <- emmeans::joint_tests(mindful_lm, "trial_arm")
+
+#By 'role'
+sea_role <- emmeans::joint_tests(mindful_lm, "role")
+
+# partial omega squared:
+omega <- car::Anova(mindful_lm, type = 3) |> 
+  effectsize::omega_squared(ci = 0.95) 
+```
+
+### Model assumptions
+
+```{r}
+#Linearity and homoscedasticity
+lm_scale <- ggplot2::autoplot(mindful_lm,
+                  which = 3,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "#e2701b") +
+    labs(y = "Square Root of the Standardized Residuals",
+         x = "Predicted Model Values") +
+  theme_minimal()
+
+#Robust to hetero
+rob_tbl <- parameters::model_parameters(mindful_lm, vcov = "HC4") 
+
+#Independant Errors
+lm_cooks <- ggplot2::autoplot(mindful_lm,
+                  which = 4,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "#e2701b") +
+    labs(y = "Cook's Distance",
+         x = "Case Number") +
+  theme_minimal()
+
+#Normality of errors/ Q-Q
+lm_qq <- ggplot2::autoplot(mindful_lm,
+                  which = 2,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "#e2701b") +
+    labs(y = "Standardised deviance residual", x = "Theoretical quantile") +
+  theme_minimal()
+```
+
+## **Results** {#results}
+
+### Summary statistics and data visualization
+
+The violin plots of `stress`, @fig-1, shows that stress score distribution at follow-up for medical staff varies more between intervention conditions than it does for management and support workers. The confidence intervals in this initial visualisation of the data also indicate that `stress` may not significantly differ between intervention conditions or job roles.
+
+```{r}
+#| fig-cap: "Violin plots of stress at follow-up, grouped by intervention allocation and job role"
+#| label: fig-1
+stress_viol
+```
+
+The mean and confidence interval plot of stress, @fig-2, shows the means and confidence intervals of stress, grouped by each predictor, with more precision than the violin plot above. They confirm that there does not seem to be a significant difference in stress means between medical and other job roles or between management and support worker job roles, but also suggests that there may be a difference in stress means between intervention allocation for medical staff.
+
+```{r}
+#| fig-cap: "Mean and confidence interval plot of stress at follow-up, grouped by intervention allocation and job role"
+#| label: fig-2
+stress_ci
+```
+
+Descriptive statistics of stress grouped by job role, displayed in @tbl-1, and grouped by intervention allocation, displayed in @tbl-2 confirm that stress means do not appear to significantly vary by either job role or intervention allocation (CIs overlap by more than 0.25%).
+
+```{r}
+#| tbl-cap: "Descrptive statistics for stress, grouped by job role"
+#| label: tbl-1
+
+knitr::kable(desc_tbl1, digits = 3,
+             col.names = c("Role", "n", "Mean", "CI Lower", "CI Higher", "Standard Deviation"),
+             align=rep('c', 6)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r}
+#| tbl-cap: "Descrptive statistics for stress, grouped by intervention allocation"
+#| label: tbl-2
+knitr::kable(desc_tbl2, digits = 3,
+             col.names = c("Intervention", "n", "Mean", "CI Lower", "CI Higher", "Standard Deviation"),
+             align=rep('c', 6)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+### Statistical model
+
+@tbl-5 shows `stress` means grouped by every possible combination of `trial_arm` and `role` in the fitted model. The statistics show that there may be some difference between groups but it is hard to distinguish. F and b values and their corresponding p values are calculated in @tbl-3 to make the interaction clearer.
+
+```{r}
+#| tbl-cap: "Table of Means of Predictor Contrasts"
+#| label: tbl-5
+knitr::kable(contr_means, digits = 3,col.names = c("Intervention", "Role", "Mean", "SE", "CI Low", "CI High"),
+             align=rep('c', 6)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-3 shows that there was a significant effect of `role` on `stress`, (F~2,528~ = 3.174 p = 0.043) but not of `trial_arm` on `stress` (F~1,528~ = 0.472 p = 0.492). This indicates that the model does not support the first component of H~1~: `stress` is not significantly predicted by `trial_arm`. However, there was a significant effect of the interaction of `trial_arm` and `role` on `stress` (F~2,528~ = 4.651 p = 0.010) which supersedes the individual effects. This indicates that the proportion of variance in `stress` accounted for by the interaction of `trial_arm` and `role` in the model is greater than would be expected if there was no effect. The effects of the hypothesised contrasts are given in @tbl-4
+
+```{r}
+#| tbl-cap: "Table of model F values"
+#| label: tbl-3
+knitr::kable(tbl_f, digits = 3,col.names = c("Sum of Squares", "df", "F", "p"),
+             align=rep('c', 5)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-4 shows that the contrasts had non significant direct effects on `stress` (medical vs support and management roles b = 3.33 p = .125, management vs support roles b = 2.88 p = .446). Of more importance to the research team, the hypothesised contrasts also had a non-significant effect on the relationship between `stress` and `trial_arm` (medical vs support and management roles b = -1.24 p = .776, management vs support roles b = 5.69 p = .452), contradicting the second component of H~1.~
+
+```{r}
+#| tbl-cap: "Table of Hypothesised Contrast Coefficients"
+#| label: tbl-4
+knitr::kable(tbl_b, digits = 3,col.names = c("Contrast","b", "SE", "F", "p"),
+             align=rep('c', 5)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-6 shows the results of a simple effects analysis of both intervention allocations. There was a significant effect of `role` on `stress` for the psychosocial information intervention (F~2,528~ = 7.292 p = 0.001) but not for the mindfulness intervention (F~2,528~ = 0.649 p = 0.523). The F ratio for the psychosocial information intervention is fairly large indicating that the variance in `stress` explained by `role` in the psychosocial information intervention is around 7 times greater than would be expected if there was no effect. This is less relevant to the research hypothesis but does show that the effect of `role` on `stress` was only significant in the psychosocial information condition.
+
+```{r}
+#| tbl-cap: "Simple Effects Analysis for Each  Intervention Allocation"
+#| label: tbl-6
+knitr::kable(sea_trial, digits = 3, col.names = c("Model Term","Intervention", "df","df (residuals)", "F", "p"),
+             align=rep('c', 6)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-7 shows the results of a simple effects analysis of the three job role categories. There was a significant effect of `trial_arm` on `stress` for the medical staff (F~1,528~ = 20.795 p \< 0.001) but not for management roles (F~1,528~ = 0.430 p = 0.512) or support worker roles (F~1,528~ = 0.182 p = 0.670). The F ratio for the medical role is very large indicating that the variance in `stress` explained by `trial_arm` for medical job roles is much greater (around 21 times) than would be expected if there was no effect.
+
+```{r}
+#| tbl-cap: "Simple Effects Analysis for Each  Job Role"
+#| label: tbl-7
+knitr::kable(sea_role, digits = 3, col.names = c("Model Term","Job Role", "df","df (residuals)", "F", "p"),
+             align=rep('c', 5)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-8 shows the partial omega squared values for each predictor including the interaction effect. The individual interaction had very low effect sizes (`trial_arm` 𝜔̂𝑝 \< 0.001 \[0.00,1.00\], `role` 𝜔̂𝑝 = 0.008 \[0.00,1.00\]). The interaction of `trial_arm` and `role` is of more interest to the research team but is still low (𝜔̂𝑝 = 0.013 \[0.00,1.00\]) indicating that the interaction only accounts for around 1.3% of the total variance in `stress`.
+
+```{r}
+#| tbl-cap: "Partial Omega Squared values for each predictor and their interaction"
+#| label: tbl-8
+knitr::kable(omega, digits = 3, col.names = c("Parameter", "Partial Omega Squared", "Significance", "CI Low", "CI High"),
+             align=rep('c', 3)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+### Model assumptions {#resultsassumptions}
+
+The assumptions of linearity & homoscedasticity were checked by plotting the predicted model values against the square root of the standardized residuals. The plot can be seen in @fig-3 The plotted values are not evenly distributed: there is little curve, meeting the most important assumption of linearity, but the data points seem left weighted, violating the assumption of homoscedasticity. Due to this possible violation, the model will be refitted to a model with significance and confidence intervals that are robust to heteroskedasticity.
+
+```{r}
+#| fig-cap: "Plot of predicted model values against the square root of the standardized residuals"
+#| label: fig-3
+lm_scale
+```
+
+@tbl-9 shows the output of the heteroskedasticity robust model. The independent and interaction variables are still non significant (Intervention: b = -0.90 p = .492, medical-vs-other-role: b = 3.33 p = .128, management-vs-support-role: b = 2.88 p = .446, Intervention x medical-vs-other-role: b = -1.24 p = .776, Intervention x management-vs-support-role: b = 5.69 p = .452). This suggests that heteroskedasticity did not significantly effect the results.
+
+```{r}
+#| tbl-cap: "Table of Output of Heteroskedastic-Robust Model"
+#| label: tbl-9
+
+knitr::kable(rob_tbl, digits = 3, 
+             col.names = c("Parameter", "b", "SE", "Significance", "CI Low", "CI High", "t", "df (residuals)", "p"),
+             align=rep('c', 5)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+The assumption of independent errors was checked by plotting Cook's distance values against each case number. The plot can be seen in @fig-4 None of the cases have a Cook's distance ≥ 1 so it can be interpreted that there are no highly influential outliers and that the assumption has been met.
+
+```{r}
+#| fig-cap: "Plot of Cook's distance values against each case number"
+#| label: fig-4
+lm_cooks
+```
+
+The assumption of normality of errors was checked by a Q-Q plot of the standardised deviance residual against normal theoretical quantiles. The plot can be seen in @fig-5 The plotted values do slightly diverge from the dotted line, however, as the sample size is \>500 this should not significantly effect the results.
+
+```{r}
+#| fig-cap: "Q-Q plot of the standardised deviance residual against normal theoretical quantiles"
+#| label: fig-5
+lm_qq
+```
+
+## Summary
+
+In summary, the model does not support the component of H~1~ that `trial_arm` will predict `stress`. The results do suggest that there is a significant effect of the interaction between `trial_arm` (intervention allocation) and `role` (job role) on `stress`. However, the hypothesis component that effect of the intervention would be greater for medical staff than for management and support worker staff and greater for management staff than for support worker staff was also not supported by the model.
+
+Interestingly, simple effects analysis did reveal that the effect of `trial_arm` on `stress` was only significant for the medical staff `role` and not for management or support workers. This suggests that there is a moderation effect of `role` on the interaction between `trial_arm` and `stress` but, as above, no significant effects of the interactions of the planned `role` contrasts and `trial_arm` on `stress` were found.
+
+The effect size for the effect of the interaction of `trial_arm` and `role` on `stress` is very low. Partial omega squared values of the model predict that the interaction effect only accounts for 1.3% of the total variation in `stress`.

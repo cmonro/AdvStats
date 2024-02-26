@@ -1,0 +1,20 @@
+---
+title: "Quarto Week 4"
+format: html
+editor: visual
+---
+
+# Discovr_08 GLM
+
+```{r}
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+
+```
+
+```{r}
+#Descriptive graphs
+GGally::ggscatmat(fake_data, columns = c("age", "stats_skill", "helpfulness", "teach_skill"))
+
+```
+
+# Discovr_06 Beast of Bias

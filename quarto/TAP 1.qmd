@@ -1,0 +1,273 @@
+---
+title: "TAP 01 Report"
+author: "Candidate 277353"
+format: 
+  html:
+    self-contained: true
+    theme: united
+    code-fold: false
+    toc: true
+editor: visual
+editor_options: 
+  chunk_output_type: console
+  
+  title: "TAP 02 Report"
+author: "Candidate 277353"
+knitr:
+  opts_chunk: 
+    message: false
+    echo: true
+    warning: false
+html:
+    self-contained: true
+    theme: united
+    code-fold: false
+    toc: true
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#load packages
+library(broom) 
+library(dplyr) 
+library(kableExtra)
+library(ggfortify)
+library(parameters)
+```
+
+```{r}
+# load data and filter by 'Follow-up'
+mindful_tib <- here::here("data/tap_mindfulness.csv") |>
+  readr::read_csv()
+mutate(dplyr::filter(mindful_tib, time=='Follow-up'))
+
+# remove rows with no responses to engagement
+mindful_tib <- tidyr::drop_na(mindful_tib, "engagement")
+```
+
+# TAP 01 - Candidate 277353
+
+## **Analysis plan**
+
+The research team is exploring the efficacy of a mindfullness based intervention. The intervention is aimed at reducing stress in NHS staff, compared to a control sample.
+
+The team tested the following hypothesis:
+
+-   H~1~: At follow-up participants' `stress` will be predicted by both their engagement with the programme to which they were assigned (`engagement`) and their `anxiety` levels.
+
+To test this hypotheses, the data will be fitted to a general linear model (GLM) using `stress` as the outcome variable and using `engagement` and `anxiety` as predictor variables.
+
+::: callout-note
+Engagement data for 534 of the 1602 participants was not recorded. Due to this, data from those 534 participants were excluded from analysis. Data from 1068 remaining participants were included in analysis.
+:::
+
+The linear regression model the data will be fitted to is:
+
+$\text{Stress}_{i} = \hat{b}_0+ \hat{b}_{1} \text{engagement}_i + \hat{b}_{2} \text{anxiety}_i + error_i$
+
+Summary statistics of the data will be computed and presented as follows:
+
+-   A density plot of `stress` to visualise the distribution. This also allows testing for skewness and kurtosis. GLM models do not require normally distributed variables to provide useful outputs but skewed or non-mesokurtic (non-average kurtosis) variable distribution may indicate that normal residual or homoscedasticity assumptions will be violated. Q-Q and standardised residue plots, mentioned below, are better tests of this.
+
+-   Density plots of `engagement` and `anxiety` to visualise their distribution. Also to test for skewness and kurtosis, as above.
+
+-   Descriptive statistics (mean, standard deviation, inter-quartile range, skewness, kurtosis, and number of observations) of `stress` and `engagement` and `anxiety` to display quantified values of any deviations from normal distribution and to evaluate the sample distributions.
+
+The GLM being fitted will be used to look for significant interactions (p ≤ .05) between `stress` and `engagement`, between `stress` and `anxiety`, and the combined effect of both `engagement` and `anxiety` on `stress`. If a significant interaction is found, the consequence of the regression coefficient will be discussed. The GLM makes several assumptions about the data, they will be assessed, in order of most important to least important, as follows:
+
+-   **Linearity & Homoscedasticity**: These assumptions will be checked by plotting the predicted model values against the square root of the standardized residuals. If the assumptions have been met, the plotted values would be evenly distributed with no curved (non-linearity) nor cone-shaped (heteroscedasticity) pattern to the values. If the linearity or homoscedasticity assumptions are violated, logarithmic, square root or other transformation of the outcome variable would be possible solutions.
+
+-   **Independent errors**: This assumption will be checked by plotting Cook's distance values against each case number. Any cases with a cook's distance ≥ 1 will be considered highly influential outliers and will violate the assumption. Any cases that violate this assumption will be excluded from the data and the model will be refitted without them.
+
+-   **Normality of errors**: This assumption will be checked by a Q-Q plot of the standardised deviance residual against normal theoretical quantiles. For the assumption to be met, the plotted values would sit along the solid line. If this assumption is violated the parameter estimates will still match the expected population value and minimise the squared error so a correction is not necessary.
+
+## **Coding**
+
+This section of the report includes creation of summary statistics, fitting of the GLM, and checking of the model assumptions. Results and analysis will be reported under [Results](#results).
+
+### Summary statistics and data visualization
+
+```{r}
+
+# stress frequency
+stress_frq <- ggplot(mindful_tib, aes(x = stress)) +
+  geom_density(fill = "#8a2be2", alpha = 0.5, colour = "#ff00ff") +
+  scale_x_continuous(breaks =seq(0, 50, 5)) +
+  labs(y = "Frequency", x = "Stress Score at Follow-up") +
+  theme_minimal()
+
+# engagement frequency
+enga_frq <- ggplot(mindful_tib, aes(x = engagement)) +
+  geom_bar(fill = "#8a2be2", alpha = 0.5, colour = "#ff00ff") +
+  scale_x_continuous(breaks =0:7) +
+  scale_y_continuous(breaks = seq(0, 400, 50)) +
+  labs(y = "Frequency", x = "Days Per Week Engaging with Programme") +
+  theme_minimal()
+
+# anxiety frequency
+anxi_frq <- ggplot(mindful_tib, aes(x = anxiety)) +
+  geom_density(fill = "#8a2be2", alpha = 0.5, colour = "#ff00ff") +
+  scale_x_continuous(breaks =seq(0, 45, 5)) +
+  labs(y = "Frequency", x = "Anxiety Score at Follow-up") +
+  theme_minimal()
+
+#descriptive stats table
+desc_tbl <- mindful_tib |>
+select(stress, engagement, anxiety) |> 
+describe_distribution()
+```
+
+### Statistical model
+
+```{r}
+# lm fit
+mindful_lm <- lm(stress ~ engagement*anxiety, data = mindful_tib, na.action = na.exclude)
+
+
+#Table of lm coeff etc.
+lm_tbl <- mindful_lm |>
+  broom::tidy(, conf.int = T) |>
+  mutate(
+    p.value = scales::pvalue(p.value)
+  ) |>
+  kable(
+    col.names = c("Predictor", "B", "SE", "F", "p", "CI Low", "CI High"),
+    digits = c(0, 2, 3, 2, 3, 2, 2),
+     align=rep('c', 6)
+  )
+    
+# model fit
+fit_tbl <- broom::glance(mindful_lm)
+```
+
+### Model assumptions
+
+```{r}
+#Linearity and homoscedasticity
+lm_scale <- ggplot2::autoplot(mindful_lm,
+                  which = 3,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "#8a2be2") +
+    labs(y = "Square Root of the Standardized Residuals",
+         x = "Predicted Model Values") +
+  theme_minimal()
+
+#Independant Errors
+lm_cooks <- ggplot2::autoplot(mindful_lm,
+                  which = 4,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "#8a2be2") +
+    labs(y = "Cook's Distance",
+         x = "Case Number") +
+  theme_minimal()
+
+#Normality of errors/ Q-Q
+lm_qq <- ggplot2::autoplot(mindful_lm,
+                  which = 2,
+                  alpha = 0.3,
+                  size = 1,
+                  label.size = 0,
+                  colour = "#8a2be2") +
+    labs(y = "Standardised deviance residual", x = "Theoretical quantile") +
+  theme_minimal()
+```
+
+## **Results** {#results}
+
+### Summary statistics and data visualization
+
+The frequency plot of `stress`, @fig-1, shows that stress scores at follow-up are fairly normally distributed but have a slight left skew. The divergence from normal distribution shouldn't violate any assumptions of the model but these will be checked [below](#resultsassumptions).
+
+```{r}
+#| fig-cap: "Frequency plot of stress at follow-up"
+#| label: fig-1
+stress_frq
+```
+
+The frequency plot of `engagement`, @fig-2, shows that engagement with the programme is heavily left skewed. This may cause violation of the model's assumptions, this will be checked [below](#resultsassumptions). It also indicates that the model may be less reliable for predicting `stress` at higher levels of `engagement`.
+
+```{r}
+#| fig-cap: "Frequency plot of engagement with the programme"
+#| label: fig-2
+enga_frq
+```
+
+The frequency plot of `anxiety`, @fig-3, shows that anxiety scores at follow-up are also heavily left skewed. As above, this may cause violation of the model's assumptions, this will be checked [below](#resultsassumptions). It also indicates that the model may be less reliable for predicting `stress` at higher levels of `anxiety`.
+
+```{r}
+#| fig-cap: "Frequency plot of anxiety at follow-up"
+#| label: fig-3
+anxi_frq
+```
+
+Descriptive statistics, displayed in @tbl-desc, confirm the distribution of `stress`, `engagement` and `anxiety` visualised in the plots above. `stress` (M = 18.11, SD = 7.97) is left skewed (skew = 0.59) but should still be an effective outcome variable for the model. `engagement` (M = 2.32, SD = 2.17) is also left skewed (skew = 0.65) and has negative kurtosis (K = -0.68). `anxiety` (M = 10.41, SD = 7.80) is has extreme left skewness (skew = 0.84) and positive kurtosis (K = 0.58). The deviations from variable normal distribution don't confirm that model assumptions will be violated, this will be checked in post-fit [assumption analysis](#resultsassumptions). However, the high standard deviations of `engagement` and `anxiety` relative to their means does indicate that the fitted model will be less reliable for predicting the effects of `engagement` and `anxiety` on `stress`.
+
+```{r}
+#| tbl-cap: "Descrptive statistics for stress, engagement and anxiety"
+#| label: tbl-desc
+knitr::kable(desc_tbl, digits = 2) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+### Statistical model
+
+@tbl-3 shows statistics of how well the model fits the data. The r squared value is typical for psychological studies (r^2^ = .493) and can be interpreted to mean that the model accounts for just under 50% of the variability in `stress`. The adjusted r squared value is almost as large as the r squared value (adj.r^2^ = 0.492), meaning that the model is still a good fit of the data after correcting for the number of variables included. The F value is very large (F~2,1067~ = 345.53 p \< 0.01) indicating that the proportion of variance explained is larger than would be expected if there was no effect at all.
+
+```{r}
+#| tbl-cap: "Fit statistics for the fitted model"
+#| label: tbl-3
+knitr::kable(fit_tbl, digits = 3,
+             col.names = c("r squared", "adj.r squared", "sigma", "F", "p", "df", "logLik", "AIC", "BIC", "deviamce", "df residual", "n"),
+             align=rep('c', 12)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-2 shows the output of the fitted model. `stress` was non-significantly predicted by `engagement` (𝜷 = -0.18, 95% CI \[-0.45, 0.08\], p = .167). `stress` was significantly predicted by `anxiety` (𝜷 = 0.74, 95% CI \[0.68, 0.81\], p \< 0.001). The interaction of `engagement` and `anxiety` non-significantly predicted `stress` (𝜷 = -0.02, 95% CI \[-0.04, 0.00\], p = .096).
+
+The y intercept of the model is 11.20 meaning that if the values of `engagement` and `anxiety` are 0, the model predicts that the value of `stress` will be 11.20. As `engagement` and its interaction with `anxiety` were non-significant predictors of `stress` the related coefficients are not interpretable. The 𝜷 coefficient of `anxiety` can be interpreted as a model prediction that, when the values of the other predictors are 0, each increase of 1 in `anxiety` will increase `stress` by 0.74. e.g. if `anxiety` is 3, `stress` would be 11.20 + (3 x 0.74) = 13.42. As the significance level was pre-set at 95%, the p value of 𝜷 for `anxiety` of \< 0.05 means that if the null hypothesis was true, there is only a 5% chance that the value of 𝜷 would be as great or greater than was found by the model.
+
+```{r}
+#| tbl-cap: "Model output for the effect of positivity on efficacy"
+#| label: tbl-2
+lm_tbl
+```
+
+### Model assumptions {#resultsassumptions}
+
+The assumptions of linearity & homoscedasticity were checked by plotting the predicted model values against the square root of the standardized residuals. The plot can be seen in @fig-4. The plotted values are not evenly distributed: there is little curve, meeting the most important assumption of linearity, but there is a obvious cone-shaped pattern, violating the assumption of homoscedasticity. A solution to this heteroscedasticity would be to transform the data by take the log value of each predictor variable value, but this is outside the scope of this assignment.
+
+```{r}
+#| fig-cap: "Plot of predicted model values against the square root of the standardized residuals"
+#| label: fig-4
+lm_scale
+```
+
+The assumption of independent errors was checked by plotting Cook's distance values against each case number. The plot can be seen in @fig-5. None of the cases have a Cook's distance ≥ 1 so it can be interpreted that there are no highly influential outliers and that the assumption has been met.
+
+```{r}
+#| fig-cap: "Plot of Cook's distance values against each case number"
+#| label: fig-5
+lm_cooks
+```
+
+The assumption of normality of errors was checked by a Q-Q plot of the standardised deviance residual against normal theoretical quantiles. The plot can be seen in @fig-6. The plotted values sit close to the plotted line so this assumption can be seen as met.
+
+```{r}
+#| fig-cap: "Q-Q plot of the standardised deviance residual against normal theoretical quantiles"
+#| label: fig-6
+lm_qq
+```
+
+## Summary
+
+In summary, the hypothesis that `stress` is predicted by `engagement` and `anxiety` was only partially supported by the model. `anxiety` was a significant predictor of `stress` but `engagement` and the interaction effect of `anxiety` and `engagement` were non-significant predictors. This can be interpreted to mean that anxiety levels in NHS employees did predict their stress levels 4 months after the intervention, but the number of days they engaged with the intervention material did not.
+
+The standard deviations of `engagement` and `anxiety` were very high relative to their means, suggesting that the model is less reliable for predicting the effects of `engagement` and `anxiety` on `stress`. This may be due to the assumption of homoscedasticity being violated. As a result the confidence intervals in @tbl-2 also cannot be assumed to be reliable. Fitting a model with transformed predictor variables would likely improve on the reliability of the model.
+
+The adjusted r squared value of the model was suitably high and the model assumptions of linearity, independent errors and normality of errors were met, suggesting that, aside from the heteroscedasticity, the fitted model was a good fit for the data and provides insight into the effect of `engagement` and `anxiety` on `stress`.

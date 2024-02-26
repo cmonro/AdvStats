@@ -1,0 +1,92 @@
+---
+title: "Week 2 CompRtition"
+author: "218252"
+format: 
+  html:
+    self-contained: true
+    theme: sketchy
+    code-fold: true
+    toc: true
+editor: visual
+bibliography: references.bib
+---
+
+# Visit Sussex
+
+![Falmer House at The University of Sussex](images/University-of-Sussex.webp)
+
+A leading research institution, located in the beautiful and scenic South Downs National Park, what better place to study than [The University of Sussex](https://www.sussex.ac.uk/). From scientific discovery to global policy, from student welfare to career development, Sussex innovates and takes a lead. There are so many reasons to visit Sussex.
+
+## Beautiful and Scenic
+
+Sussex campus is located in the South Downs National park and offers stunning views of the rolling hills and beautiful green spaces.
+
+![Example of the awe inspiring views on campus](images/construction1.jpg){width="10cm"}
+
+## Management, Staff and Student Partnership
+
+Academia is as thriving as it has always been as exemplified by the passionate lecturers at Sussex
+
+![Sussex staff teaching students about participating in collective action](images/strikes.jpeg){width="10cm"}
+
+::: callout-tip
+## Good to know!
+
+Sussex contributes to open science by paying to publish in big-name journals and also paying to access them! For example, access to articles such as @Fortunato2021 are included in my tuition fee!
+:::
+
+## Great Value Food
+
+Sussex offers many food options that anyone would be envious of.
+
+![Mouthwatering food options - Only £25!](images/Food%20box.webp){width="10cm"}
+
+## Loving Sussex Just Makes Sense!
+
+$\text{Loving Sussex}=\hat{b}_{StockholmSyndrome}+\hat{b}_{SunkCostFallacy}+\varepsilon$
+
+Who could argue with maths like that?
+
+## We Have Data To Prove It
+
+I made up this data and presented it using @tidyverse:
+
+```{r}
+
+library(readr)
+library(kableExtra)
+
+df <- readxl::read_excel('/cloud/project/data/FakeSussexLoveData.xlsx')
+colnames(df)[1] <- "Participant"
+
+df |>
+  dplyr::sample_n(20) |> 
+  knitr::kable(caption = "Data of student's love for their university", digits = 2) |> 
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+And ran a T test on the data:
+
+```{r}
+colnames(df)[3] <- "university_love"
+df$University <- as.factor(df$University)
+t.test(university_love~University, data=df)
+```
+
+A significant p value means it's true. Right?
+
+## Finally, a message from me:
+
+Everything in the above document was intended to be a light-hearted parody and no ill intent or malice went into making it. I love Sussex and consider myself very lucky to be able to study here.
+
+> No act of kindness,
+>
+> no matter how small,
+>
+> is ever wasted.
+>
+> -Aesop
+
+💙💖🤍
+
+## 

@@ -1,0 +1,244 @@
+---
+title: "Report"
+author: "Candidate 277353"
+format: 
+  html:
+    self-contained: true
+    theme: united
+    linkcolor: "#f1c232"
+    code-fold: false
+    toc: true
+knitr:
+  opts_chunk: 
+    message: false
+    echo: true
+    warning: false
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#load packages
+library(broom) 
+library(dplyr) 
+library(kableExtra)
+library(ggfortify)
+library(parameters)
+library(nlme)
+```
+
+```{r}
+# load data
+mindful_tib <- here::here("data/tap_mindfulness.csv") |>
+  readr::read_csv() 
+
+mindful_tib <- subset(mindful_tib[ , c(1,2,4,5,7,9)])
+```
+
+# Report - Candidate 277353
+
+## **Analysis plan**
+
+The present research explore the efficacy of a mindfulness based intervention aimed at reducing stress in NHS staff. The intervention involved internet based mindfulness guidance and encouragement. An active control was used consisting of an internet based guide of psychosocial information and guidance to manage stress at work. Whether participants were assigned to the mindfulness guidance condition or to the psychosocial information control was recorded under the variable `trial_arm`. `Stress` scores (0-42) and `burnout` scores (0-49) were measured prior to the intervention; `stress` was also measured 1 month after the intervention implementation, and at a 4 month follow-up. Time since the intervention was recorded categorically as `time` (Baseline, Post, and Follow-up) and continuously as `months` (0-18 months).
+
+The team tested the following hypothesis:
+
+-   H~1~: The linear rate of change of (`stress`) over time will be affected by which intervention (`trial_arm`) they received after adjusting for their `burnout`.
+
+To test this hypotheses, the data will be fitted to a multilevel, growth, general linear model (GLM) using `stress` as the outcome variable and using the interaction of `months` and `trial_arm`, and `burnout` as predictor variables. The model will account for variability in intercepts and slopes between participants.
+
+The data will be fitted to the following GLM:
+
+$\text{Stress}_{ij} = [\hat{\gamma}_{0} + \hat{\gamma}_{1}[\text{months}_{ij} \text{trialarm}_{i}] + \hat{\gamma}_{2}\text{burnout}_{i}] + [\hat{\zeta}_{0i} + \hat{\zeta}_{1i}\text{months}_{ij} + e_{ij}]$
+
+-   $\hat{\gamma}_{0}$ = average `stress` score when the `trial_arm` is psychosocial information and `burnout` = 0
+
+-   $\hat{\gamma}_{1}$ = average rate of change in `stress` when `burnout` = 0
+
+-   $\hat{\gamma}_{2}$ = average rate of change in `stress` when the interaction effect of `months` and `trial_arm` = 0
+
+-   $\hat{\zeta}_{0i}$ = deviation of individual's baseline `stress` from group average
+
+-   $\hat{\zeta}_{1i}$ = deviation of individual's rate of change in `stress` from group average
+
+-   $e_{ij}$ = portion individual's `stress` score that is unpredicted at `months` 𝑗
+
+Summary statistics of the data will be computed and presented as follows:
+
+-   A table of means, confidence intervals and standard deviations of `stress` grouped by `trial_arm` and `time`. This will provide the average scores and distributions of stress for both the first order and second order levels to give an idea of how stress varies between them.
+-   A plot of `stress` against `months` for both mindfulness and psychosocial information levels of `trial_arm`. This will provide an idea of the difference in rate of change of `stress` between both interventions.
+
+The growth GLM being fitted will be used to look for a significant effect (p ≤ .05) of the interaction of `months` and `trial_arm` on `stress` when controlling for `burnout`.
+
+The multilevel growth model makes several assumptions:
+
+-   linearity
+
+-   additivity
+
+-   normally distributed, homoskedastic errors and random effects with means of 0
+
+-   independent errors
+
+Violation of these assumptions by the fitted model will not be checked for or counteracted in this analysis.
+
+Maximum likelihood estimation will be used to compute the predictor coefficients. Degrees of freedom will be approximated in the model and p values will be computed using these approximations.
+
+If a significant interaction effect is found, the 𝛾̂ values and corresponding p values of the fixed effect of `months` for each level of `trail_arm` will be computed. This will provide the rate of change of `stress` over `months` for both interventions.
+
+Additionally, the standard deviation of the random intercepts and random slopes will be computed in addition to their correlation. This will allow assessment of the effect of variability in intercepts and slopes accounted for in the model.
+
+## **Coding**
+
+This section of the report includes creation of summary statistics and fitting of the GLM. Results and analysis will be reported under [Results](#results).
+
+### Summary statistics and data visualization
+
+```{r}
+#| output: false
+#table of mean stress at at each time point for each intervention
+stress_tbl <- mindful_tib |>
+  dplyr::group_by(trial_arm, time) |>
+  dplyr::summarize(
+    mean_stress = mean(stress),
+    ci_low_stress = ggplot2::mean_cl_normal(stress)$ymin,
+    ci_upp_stress = ggplot2::mean_cl_normal(stress)$ymax,
+    sd(stress)
+)
+
+  
+#plot of stress against time for each intervention
+stress_plot <- ggplot2::ggplot(mindful_tib, aes(months, stress, colour = trial_arm, fill = trial_arm)) +
+  geom_point(size = 1, alpha = 0.6, position = position_jitter(width = 0.1, height = 0.1)) +
+  geom_smooth(method = "lm", alpha = 0.3) +
+  coord_cartesian(ylim = c(0, 45)) +
+  scale_y_continuous(breaks = seq(0, 45, 5)) +
+  scale_x_continuous(breaks = seq(0, 20, 1)) +
+  labs(x = "Time from baseline (months)", y = "Stress Score (0-42)", colour = "Intervention", fill = "Intervention") +
+  theme_minimal()
+
+#View min and max value of months at time==Follow-up
+followup_tib <- filter(mindful_tib, time == "Follow-up")
+min(followup_tib$months)
+max(followup_tib$months)
+
+
+```
+
+### Statistical model
+
+```{r}
+#| output: false
+#set as factor
+mindful_tib$trial_arm <- as.factor(mindful_tib$trial_arm)
+
+#Check levels
+levels(mindful_tib$trial_arm)
+
+#Reorder levels
+mindful_tib <- mindful_tib |> 
+  dplyr::mutate(
+    trial_arm = forcats::fct_relevel(trial_arm, "Psychosocial information"),
+  )
+
+#Check levels again
+levels(mindful_tib$trial_arm)
+
+
+#Random slopes model: predicts stress from time with slopes varying accross participants
+stress_rs <- nlme::lme(stress ~ months:trial_arm + burnout, random = ~ months|id, data = mindful_tib, method = "ML")
+
+#F value tbl
+tbl1 <- anova(stress_rs)
+
+#individual fixed effects - rate of change
+tbl2 <- broom.mixed::tidy(stress_rs, conf.int = T, effects = 'fixed')
+
+# rate of change - removed as superflous (provides same information as fixed effects tbl)
+#tbl3 <- emmeans::emtrends(stress_rs, specs = "trial_arm", var = "months") |>
+#  tibble::as_tibble()
+
+# random intercepts and slopes
+tbl4 <- broom.mixed::tidy(stress_rs, conf.int = T, effects = 'ran_pars')
+```
+
+## **Results** {#results}
+
+### Summary statistics and data visualization
+
+The table of mean `stress` scores at each level of `time` and `trial_arm`, @tbl-0.1, shows stress decreases over time for both psychosocial information and mindfulness interventions but there seems to be a greater reduction in stress in the mindfulness condition. Standard deviation is greater at follow-up and post than at baseline time points, for both interventions, indicating that there may be variability in the effect of the interventions between participants. The predictor `time` is categorical and does not account for variation in time within time points. For example, at follow-up, `months` has a range of 4.11 to 12.50 months.
+
+```{r}
+#| tbl-cap: "Plot of mean stress at each time point for each intervention"
+#| label: tbl-0.1
+knitr::kable(stress_tbl, digits = 3,col.names = c("Intervention", "Time", "Mean Stress", "CI Low", "CI High", "sd"),
+             align=rep('c', 6)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+The plot of `stress` against `months` for each level of `trial_arm`, @fig-1, visualises the trend shown above: stress decreases over time under both levels of `trail_arm` but the rate of decrease is greater for the mindfulness intervention. The rate of change of `stress` scores appears to be significantly different between interventions as the confidence interval areas have very little overlap. The plot illustrates that there are few data points for times greater than around 5 months. Therefore the model is not reliable for predicting changes in `stress` more than 5 months from intervention. Additionally there is one extreme outlier of `months` = 17.23 under the "Post" level of `time`; this value seems nonsensical as this time point should be close to 1 month. The effect of this outlier on the planned analysis could be remedied by using robust parameter estimates but this was not done in this analysis.
+
+```{r}
+#| fig-cap: "Plot of stress scores against time for each intervention"
+#| label: fig-1
+stress_plot +
+  scale_color_manual(values=c("#f1c232", "#cc0000")) +
+  scale_fill_manual(values=c("#f1c232", "#cc0000"))
+```
+
+### Statistical model
+
+@tbl-1 shows the fixed effects F values, and corresponding p values, for `burnout` and the interaction of `months` and `trial_arm`. The results show, when accounting for burnout, there is a significant interaction effect of `months` and `trial_arm` on `stress`, F~(2, 1065)~ = 28.91, p \< .001. This suggests that the change in `stress` over time was significantly affected by which `trial_arm` intervention participants were assigned to.
+
+There was also a significant main effect of `burnout` on `stress`, F~(1, 1065)~ = 123.296, p \< .001 although this is not relevant to H~1~.
+
+```{r}
+#| tbl-cap: "Table of F values for fixed effects in the model"
+#| label: tbl-1
+knitr::kable(tbl1, digits = 3,col.names = c("Term", "DF(n)", "DF(d)", "F", "p"),
+             align=rep('c', 5)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-2 shows the fixed effect model coefficient of `burnout` and the fixed effect model coefficients of `months` for each level of `trial_arm`. The psychosocial information intervention significantly predicted a reduction in `stress` over time, when adjusting for `burnout`, 𝛾̂ = -0.28 \[-0.47, -0.09\], t~(1065)~ = -2.839, p = .005. The mindfulness intervention also significantly predicted a reduction in `stress` over time, when adjusting for `burnout`, 𝛾̂ = -0.72 \[-0.92, -0.52\], t~(1065)~ = -1.749, p \< .001.
+
+These results suggest that the psychosocial information intervention resulted in a reduction in `stress` at a rate of 0.28 units on the `stress` scale per month and that the mindfulness intervention resulted in a reduction in `stress` at a rate of 0.72 units on the `stress` scale per month.
+
+The confidence interval (CI) of the rate of change in `stress` in the psychosocial information condition had a high value of -0.09. This is less than can reasonably considered a meaningful rate of reduction in `stress`. However, the CI of the rate of change in `stress` in the mindfulness condition was \[-0.92, -0.52\]. Any value within this CI could be considered a meaningful rate of `stress` reduction.
+
+The difference in rate of change ( 𝛾̂ ) of `stress` between psychosocial information and mindfulness interventions is 0.44 units on the `stress` scale per month, meaning that the mindfulness intervention reduced `stress` by 0.44 units more than psychosocial information per month.
+
+The table also shows that `burnout` significantly predicted `stress` when adjusting for the interaction of `months` and `trial_arm` (change over time was not accounted for), 𝛾̂ = 0.16 \[0.13, 0.19\], t~(1065)~ = 10.15, p \< .001, although this is not relevant to H~1~.
+
+```{r}
+#| tbl-cap: "Table of fixed effect model coefficients for each intervention and burnout"
+#| label: tbl-2
+knitr::kable(tbl2, digits = 3,col.names = c("Effect", "Term", "𝛾̂", "SE", "DF(d)", "t", "p","CI Low", "CI High"),
+             align=rep('c', 8)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+@tbl-4 shows the standard deviations of `stress` intercepts, the rate of change slopes across participants, and the Pearson's r correlation coefficient between the two. The results show intercepts varied between participants, 𝜎̂~u0~ = 3.36 \[2.87, 3.93\]. Slopes also varied between participants, 𝜎̂~umonths~ = 0.80 \[0.62, 1.03\]. The residual standard deviation was 𝜎 = 5.84 \[NA, NA\]. There was a strong correlation between the standard deviations of the intercepts and the slopes between participants r~u0,umonths~ = 0.79 \[-0.11, 0.98\].
+
+This suggests that the between participant variation in intercepts is strongly, positively correlated with the between participant variation in slopes. This is would have been problematic for the model if unaccounted for as it suggests differences in `stress` at baseline affect the rate of change of `stress`.
+
+```{r}
+#| tbl-cap: "Table of standard deviations of intercepts and slopes between participants and the correlation between the two"
+#| label: tbl-4
+knitr::kable(tbl4, digits = 3, col.names = c("Effect","Group", "Term","Value (sd/correlation)", "CI Low", "CI High"),
+             align=rep('c', 6)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+## Summary
+
+In summary, the data and fitted model support the hypothesis that, after adjusting for `burnout`, the linear rate of change in `stress` by `months` will be effected by which level of `trial_arm` participants were assigned to. Specifically, the model predicted `stress` is reduced 0.44 units more per month in the mindfulness condition than in the psychosocial information condition.
+
+Random effects analysis revealed that the variability in `stress` between participants at baseline was correlated with variability in the rate of change of `stress` between participants. However, this was accounted for in the fixed effect values.
+
+The mindfulness intervention (after adjusting for `burnout`) significantly predicted a reduction of 0.72 \[0.52, 0.92\] units of `stress` per month. This is a very small change in the 42 point `stress` scale but predicts a maximum change over 5 months (subjective maximum reliable value of `months`) of 4.60 units of `stress` which can be considered a small but meaningful change.
+
+The psychosocial information intervention (after adjusting for `burnout`) significantly predicted a reduction of 0.28 \[0.09, 0.47\] units of `stress` per month. This is a very small change on the 42-point `stress` scale even at the maximum predicted change over 5 months of 2.35.
+
+Despite the contrasting conclusions of the effects of both interventions, the difference in rate of change of `stress` of 0.44 units per month results in only a 2.20 unit reduction in `stress` scores over 5 months. This is equal to just 5.24% of the total `stress` scale, suggesting that there is very little difference between the effectiveness of the mindfulness and psychosocial information conditions.

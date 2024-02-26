@@ -1,0 +1,346 @@
+---
+title: "Full Test"
+output: html_document
+date: "2023-10-27"
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#pachages
+library(BayesFactor)
+```
+
+
+```{r}
+#Read Data#
+sub_30 <- readr::read_csv('/cloud/project/data/sub_30.csv', show_col_types = FALSE)
+sub_31 <- readr::read_csv('/cloud/project/data/sub_31.csv', show_col_types = FALSE)
+sub_26 <- readr::read_csv('/cloud/project/data/sub_26.csv', show_col_types = FALSE)
+sub_25 <- readr::read_csv('/cloud/project/data/sub_25.csv', show_col_types = FALSE)
+sub_22 <- readr::read_csv('/cloud/project/data/sub_22.csv', show_col_types = FALSE)
+sub_24 <- readr::read_csv('/cloud/project/data/sub_24.csv', show_col_types = FALSE)
+sub_21 <- readr::read_csv('/cloud/project/data/sub_21.csv', show_col_types = FALSE)
+sub_19 <- readr::read_csv('/cloud/project/data/sub_19.csv', show_col_types = FALSE)
+sub_15 <- readr::read_csv('/cloud/project/data/sub_15.csv', show_col_types = FALSE)
+sub_16 <- readr::read_csv('/cloud/project/data/sub_16.csv', show_col_types = FALSE)
+sub_12 <- readr::read_csv('/cloud/project/data/sub_12.csv', show_col_types = FALSE)
+sub_9 <- readr::read_csv('/cloud/project/data/sub_9.csv', show_col_types = FALSE)
+sub_13 <- readr::read_csv('/cloud/project/data/sub_13.csv', show_col_types = FALSE)
+sub_7 <- readr::read_csv('/cloud/project/data/sub_7.csv', show_col_types = FALSE)
+sub_8 <- readr::read_csv('/cloud/project/data/sub_8.csv', show_col_types = FALSE)
+sub_4 <- readr::read_csv('/cloud/project/data/sub_4.csv', show_col_types = FALSE)
+sub_1 <- readr::read_csv('/cloud/project/data/sub_1.csv', show_col_types = FALSE)
+#sub_6 <- readr::read_csv('/cloud/project/data/sub_6.csv', show_col_types = FALSE)
+sub_5 <- readr::read_csv('/cloud/project/data/sub_5.csv', show_col_types = FALSE)
+#sub_35 <- readr::read_csv('/cloud/project/data/sub_35.csv', show_col_types = FALSE)
+#sub_32 <- readr::read_csv('/cloud/project/data/sub_32.csv', show_col_types = FALSE)
+sub_9999 <- readr::read_csv('/cloud/project/data/sub_9999.csv', show_col_types = FALSE)
+sub_1001 <- readr::read_csv('/cloud/project/data/sub_1001.csv', show_col_types = FALSE)
+sub_6655 <- readr::read_csv('/cloud/project/data/sub_6655.csv', show_col_types = FALSE)
+
+```
+
+```{r}
+#Merge - currently excluding 32, 35 & 6
+tot_df <- rbind(sub_1,sub_1001,sub_12,sub_13,sub_15,sub_16,sub_19,sub_21,sub_22,sub_24,sub_25,sub_26,sub_30,sub_31,sub_4,sub_5,sub_6655,sub_7,sub_8,sub_9,sub_9999)
+
+```
+
+
+```{r}
+#Tidy and rename
+
+newnames <- c("trial", "self_self_accept", "self_self_descision", "self_self_punishment", "self_self_reward", "self_self_ratio", "self_self_prob_reject", "self_self_prob_accept", "self_other_accept", "self_other_descision", "self_other_punishment", "self_other_reward", "self_other_ratio", "self_other_prob_reject", "self_other_prob_accept", "other_self_accept", "other_self_descision", "other_self_punishment", "other_self_reward", "other_self_ratio", "other_self_prob_reject", "other_self_prob_accept", "other_other_accept", "other_other_descision", "other_other_punishment", "other_other_reward", "other_other_ratio", "other_other_prob_reject", "other_other_prob_accept")
+
+cols <- c(1,2,5,6,8,10,11,12,14,17,18,20,22,23,24,26,29,30,32,34,35,36,38,41,42,44,46,47,48)
+
+colnames(sub_1)[cols] <- newnames
+sub_1 <- subset(sub_1[ , cols])
+
+colnames(sub_1001)[cols] <- newnames
+sub_1001 <- subset(sub_1001[ , cols])
+
+colnames(sub_12)[cols] <- newnames
+sub_12 <- subset(sub_12[ , cols])
+
+colnames(sub_13)[cols] <- newnames
+sub_13 <- subset(sub_13[ , cols])
+
+colnames(sub_15)[cols] <- newnames
+sub_15 <- subset(sub_15[ , cols])
+
+colnames(sub_16)[cols] <- newnames
+sub_16 <- subset(sub_16[ , cols])
+
+colnames(sub_19)[cols] <- newnames
+sub_19 <- subset(sub_19[ , cols])
+
+colnames(sub_21)[cols] <- newnames
+sub_21 <- subset(sub_21[ , cols])
+
+colnames(sub_22)[cols] <- newnames
+sub_22 <- subset(sub_22[ , cols])
+
+colnames(sub_24)[cols] <- newnames
+sub_24 <- subset(sub_24[ , cols])
+
+colnames(sub_25)[cols] <- newnames
+sub_25 <- subset(sub_25[ , cols])
+
+colnames(sub_26)[cols] <- newnames
+sub_26 <- subset(sub_26[ , cols])
+
+colnames(sub_30)[cols] <- newnames
+sub_30 <- subset(sub_30[ , cols])
+
+colnames(sub_31)[cols] <- newnames
+sub_31 <- subset(sub_31[ , cols])
+
+colnames(sub_4)[cols] <- newnames
+sub_4 <- subset(sub_4[ , cols])
+
+colnames(sub_5)[cols] <- newnames
+sub_5 <- subset(sub_5[ , cols])
+
+colnames(sub_6655)[cols] <- newnames
+sub_6655 <- subset(sub_6655[ , cols])
+
+colnames(sub_7)[cols] <- newnames
+sub_7 <- subset(sub_7[ , cols])
+
+colnames(sub_8)[cols] <- newnames
+sub_8 <- subset(sub_8[ , cols])
+
+colnames(sub_9)[cols] <- newnames
+sub_9 <- subset(sub_9[ , cols])
+
+colnames(sub_9999)[cols] <- newnames
+sub_9999 <- subset(sub_9999[ , cols])
+
+colnames(tot_df)[cols] <- newnames
+tot_df <- subset(tot_df[ , cols])
+```
+
+
+```{r}
+#F and T tests
+#self_other = reward to self, harm to other
+#means
+mean(tot_df$self_self_accept)
+mean(tot_df$self_other_accept)
+mean(tot_df$other_self_accept)
+mean(tot_df$other_other_accept)
+
+mean(tot_df$self_self_descision)
+mean(tot_df$self_other_descision)
+mean(tot_df$other_self_descision)
+mean(tot_df$other_other_descision)
+
+#Summary table
+desc_tbl1 <- tot_df |> 
+  #dplyr::group_by(role) |> 
+  dplyr::summarize(
+    #n = n(),
+    self = mean(tot_df$self_self_descision),
+    hother = mean(tot_df$self_other_descision),
+    hself = mean(tot_df$other_self_descision),
+    other = mean(tot_df$other_other_descision)
+    #ci_lower = ggplot2::mean_cl_normal(stress)$ymin,
+    #ci_upper = ggplot2::mean_cl_normal(stress)$ymax,
+    #sd(stress)
+  )
+knitr::kable(desc_tbl1, digits = 3,
+             col.names = c("Mean - Self", "Mean - Harm other", "Mean - Harm Self", "Mean - Other"),
+             align=rep('c', 4)) |> 
+  kableExtra::kable_styling(bootstrap_options = "striped")
+
+#Bar chart
+g <- ggplot(tot_df, mean(class))
+# Number of cars in each class:
+g + geom_bar()
+
+
+
+#F-test
+var.test(tot_df$self_self_descision, tot_df$self_other_descision)
+var.test(tot_df$self_self_descision, tot_df$other_self_descision)
+var.test(tot_df$self_self_descision, tot_df$other_other_descision)
+
+var.test(tot_df$self_other_descision, tot_df$self_self_descision)
+var.test(tot_df$self_other_descision, tot_df$other_self_descision)
+var.test(tot_df$self_other_descision, tot_df$other_other_descision)
+
+var.test(tot_df$other_self_descision, tot_df$self_self_descision)
+var.test(tot_df$other_self_descision, tot_df$self_other_descision)
+var.test(tot_df$other_self_descision, tot_df$other_other_descision)
+
+var.test(tot_df$other_other_descision, tot_df$self_self_descision)
+var.test(tot_df$other_other_descision, tot_df$self_other_descision)
+var.test(tot_df$other_other_descision, tot_df$other_self_descision)
+
+
+#T-test
+t.test(tot_df$self_self_descision, tot_df$self_other_descision, conf.level = 0.992)
+t.test(tot_df$self_self_descision, tot_df$other_self_descision, conf.level = 0.992)
+t.test(tot_df$self_self_descision, tot_df$other_other_descision, conf.level = 0.992)
+
+t.test(tot_df$self_other_descision, tot_df$self_self_descision, conf.level = 0.992)
+t.test(tot_df$self_other_descision, tot_df$other_self_descision, conf.level = 0.992)
+t.test(tot_df$self_other_descision, tot_df$other_other_descision, conf.level = 0.992)
+
+t.test(tot_df$other_self_descision, tot_df$self_self_descision, conf.level = 0.992)
+t.test(tot_df$other_self_descision, tot_df$self_other_descision, conf.level = 0.992)
+t.test(tot_df$other_self_descision, tot_df$other_other_descision, conf.level = 0.992)
+
+t.test(tot_df$other_other_descision, tot_df$self_self_descision)
+t.test(tot_df$other_other_descision, tot_df$self_other_descision)
+t.test(tot_df$other_other_descision, tot_df$other_self_descision)
+
+#bayes ttests
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+ttestBF(tot_df$other_self_descision, tot_df$self_self_descision, paired = F)
+```
+
+```{r}
+#Logistic regression take 2
+set.seed(1)
+
+#Set sample no
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+samp_no <- sub_1
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+#Use 70% of dataset as training set and remaining 30% as testing set
+sample1 <- sample(c(TRUE, FALSE), nrow(samp_no), replace=TRUE, prob=c(0.7,0.3))
+train1 <- samp_no[sample1, ]
+test1 <- samp_no[!sample1, ]
+
+#self_self
+#Fit model
+model1 <- glm(self_self_descision~self_self_punishment+self_self_reward, family="binomial", data=train1)
+
+#disable scientific notation for model summary
+#options(scipen=999)
+
+#view model summary
+#summary(model)
+
+#Goodness of fit test
+#pscl::pR2(model)["McFadden"]
+
+#Importance of each predictor variable
+#caret::varImp(model1)
+
+#calculate VIF values for each predictor variable in our model - rule of thumb: greater than 5 indicate severe multicollinearity
+#car::vif(model)
+
+#Predict based on set values
+#define two individuals
+#new <- data.frame(self_self_punishment = 58, self_self_reward = 58)
+#predict probability of descisioning
+#predict(model, new, type="response")
+
+#Optimal cutoff probability?
+
+#calculate probability of default for each individual in test dataset
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+logistic_self_self_1 <- predict(model1, test1, type="response")
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+###########################################################
+###self_other###
+#Use 70% of dataset as training set and remaining 30% as testing set
+sample2 <- sample(c(TRUE, FALSE), nrow(samp_no), replace=TRUE, prob=c(0.7,0.3))
+train2 <- samp_no[sample2, ]
+test2 <- samp_no[!sample2, ]
+#Fit model
+model2 <- glm(self_other_descision~self_other_punishment+self_other_reward, family="binomial", data=train2)
+#calculate probability of default for each individual in test dataset
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+logistic_self_other_1 <- predict(model2, test2, type="response") 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+##########################################
+###other_self###
+#Use 70% of dataset as training set and remaining 30% as testing set
+sample3 <- sample(c(TRUE, FALSE), nrow(samp_no), replace=TRUE, prob=c(0.7,0.3))
+train3 <- samp_no[sample3, ]
+test3 <- samp_no[!sample3, ]
+#Fit model
+model3 <- glm(other_self_descision~other_self_punishment+other_self_reward, family="binomial", data=train3)
+#calculate probability of default for each individual in test dataset
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+logistic_other_self_1 <- predict(model3, test3, type="response")
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+##########################################
+###other_other###
+#Use 70% of dataset as training set and remaining 30% as testing set
+sample4 <- sample(c(TRUE, FALSE), nrow(samp_no), replace=TRUE, prob=c(0.7,0.3))
+train4 <- samp_no[sample4, ]
+test4 <- samp_no[!sample4, ]
+#Fit model
+model4 <- glm(other_other_descision~other_other_punishment+other_other_reward, family="binomial", data=train3)
+#calculate probability of default for each individual in test dataset
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+logistic_other_other_1 <- predict(model4, test4, type="response")
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+#Importance of each predictor variable
+imp_self_self_1 <- caret::varImp(model1)
+imp_self_other_1 <- caret::varImp(model2)
+imp_other_self_1 <- caret::varImp(model3)
+imp_other_other_1 <- caret::varImp(model4)
+
+imp_self_self_1 
+imp_self_other_1
+imp_other_self_1
+imp_other_other_1
+```
+
+
+```{r}
+#Post logistic regression
+mean(logistic_self_self_1)
+mean(logistic_self_other_1)
+mean(logistic_other_self_1)
+mean(logistic_other_other_1)
+
+mean(logistic_self_self_25)
+mean(logistic_self_other_25)
+mean(logistic_other_self_25)
+mean(logistic_other_other_25)
+
+mean(logistic_self_self_25)
+mean(logistic_self_other_25)
+mean(logistic_other_self_25)
+mean(logistic_other_other_25)
+
+# 1: Reward_self_Punishment_self
+# 2: Reward_self_Punishment_other
+# 3: Reward_other_Punishment_self
+# 4: Reward_other_Punishment_other
+```
+
+```{r}
+
+```
+

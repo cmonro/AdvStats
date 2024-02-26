@@ -1,0 +1,155 @@
+---
+title: "Week 2 Quarto"
+format: html
+editor: visual
+---
+
+```{r}
+df <- readxl::read_excel('/cloud/project/data/FakeSussexLoveData.xlsx')
+colnames(df)[1] <- "Participant"
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+```
+
+# Discovr_02 Histograms and Summary Statistics
+
+```{r}
+#Frequency table
+freq_tbl <- df |>
+  dplyr::group_by(`Asked at gunpoint`) |> 
+  dplyr::summarise(
+    frequency = n()
+  )
+freq_tbl
+
+
+group_freq_dist <- df |> 
+  dplyr::mutate(
+    group = ggplot2::cut_width(Participant, 2) #splits participants into groups of 2 and craetes new variable indicating which group each row falls into
+    ) 
+group_freq_dist
+
+#Combine both above to show frequency of specific varaiable (participant) by new groups
+gp_freq_dist <- df |> 
+  dplyr::mutate(
+    group = ggplot2::cut_width(Participant, 4)
+    ) |> 
+  dplyr::group_by(group) |> 
+  dplyr::summarise(
+    frequency = n()
+  )
+gp_freq_dist
+
+#Add in relative frequency and percent variables
+new_dist <- df |> 
+  dplyr::mutate(
+    group = ggplot2::cut_width(Participant, 4)
+    ) |> 
+  dplyr::group_by(group) |> 
+  dplyr::summarise(
+    frequency = n()
+  ) |> 
+  dplyr::mutate(
+    relative_freq = frequency/sum(frequency),
+    percent = relative_freq*100
+  )
+new_dist
+```
+
+```{r}
+#Histograms
+library(ggplot2)
+eddie_tib <- here::here("data/eddiefy.csv") |> readr::read_csv()
+
+hist_tib <- eddie_tib |> 
+  dplyr::select(danceability) #Creates single factor tib
+#Not actually needed but useful - can select multiple factors- not used below
+
+ggplot2::ggplot(eddie_tib, aes(danceability)) +
+  geom_histogram(binwidth = 0.01, fill= '#8206FF', alpha = 0.5) + labs(y= 'Frequency', x = 'Danceabilility') + theme_dark()
+```
+
+```{r}
+#Summary Tables
+
+summary_tab <- fake_data |>
+  dplyr::summarise(
+    median =  median(teach_skill),
+    mean =  mean(teach_skill),
+    IQR = IQR(teach_skill),
+    variance = var(teach_skill),
+    std_dev = sd(teach_skill)
+    )
+summary_tab
+
+summary_tab |> 
+  knitr::kable(digits = 1,
+        caption = "Summary statistics for the Fake Data"
+        ) 
+
+datawizard::describe_distribution(fake_data) |> 
+  knitr::kable(digits = 2)
+```
+
+# Discovr_03 Confidence Intervals
+
+```{r}
+#Create tibble 
+pract_tib <- tibble::tibble(
+  variable1 = c(57, 40, 103, 234, 93, 53, 116, 98, 108, 121, 22), variable2 = c(20,27,19,23,21,15,25,14,26,21,19)
+)
+pract_tib
+
+#Confidence intervals
+ggplot2::mean_cl_normal(pract_tib$variable1, conf.int = 0.95)
+ggplot2::mean_cl_boot(pract_tib$variable1) #Bootsreapped, ** non-parametric samples?
+
+#Summary table with conf ints
+pract_summ <- pract_tib |>
+  dplyr::summarize(
+    Mean =  ggplot2::mean_cl_normal(variable1)$y,
+    `95% CI Lower` = ggplot2::mean_cl_normal(variable1)$ymin,
+    `95% CI Upper` = ggplot2::mean_cl_normal(variable1)$ymax,
+    median =  median(variable1),
+    range = max(variable1) - min(variable1),
+    `lower quartile` = quantile(variable1, probs = 0.25),
+    `upper quartile` = quantile(variable1, probs = 0.75),
+    IQR = IQR(variable1),
+    var = var(variable1),
+    sd = sd(variable1)
+    )
+
+pract_summ |> 
+  knitr::kable(caption = "Summary statistics for the Practice data",
+               align = 'c', #this argument centre aligns the columns
+               digits = 2)
+
+#If this confidence interval is one of the 95% that contains the population value then the mean number of followers in the population lies between 56.85 and 133.15.
+```
+
+```{r}
+#Conf Int Summary table with bootsrapped (robust) samples
+pract_summ_boot <- pract_tib |>
+  dplyr::summarize(
+    Mean =  ggplot2::mean_cl_boot(variable1)$y,
+    `95% CI Lower` = ggplot2::mean_cl_boot(variable1)$ymin,
+    `95% CI Upper` = ggplot2::mean_cl_boot(variable1)$ymax,
+    median =  median(variable1),
+    range = max(variable1) - min(variable1),
+    `lower quartile` = quantile(variable1, probs = 0.25),
+    `upper quartile` = quantile(variable1, probs = 0.75),
+    IQR = IQR(variable1),
+    var = var(variable1),
+    sd = sd(variable1)
+    )
+
+pract_summ_boot |> 
+  knitr::kable(caption = "Bootsrapped summary statistics for the practice data",
+               align = 'c', #this argument centre aligns the columns
+               digits = 2)
+```
+
+```{r}
+#summary with cont int using data wizard
+datawizard::describe_distribution(pract_tib, ci = 0.95, iterations = 500) |> 
+  knitr::kable(digits = 2, align = 'c')
+```

@@ -1,0 +1,103 @@
+---
+title: "Week 3 Quarto"
+format: html
+editor: visual
+---
+
+```{r}
+#Just playing around with Bayes
+library(brms)
+
+fit1 <- brm(formula = teach_skill | gender ~ stats_skill * helpfulness
++ (1 + age|patient),
+data = fake_data, family = lognormal(),
+prior = c(set_prior("normal(0,5)", class = "b"),
+set_prior("cauchy(0,2)", class = "sd"),
+set_prior("lkj(2)", class = "cor")),
+warmup = 1000, iter = 2000, chains = 4,
+control = list(adapt_delta = 0.95))
+```
+
+# Discovr_5 - Visualizing Data - ggplot
+
+```{r}
+fake_data <- readxl::read_excel('/cloud/project/data/Practice Data.xlsx')
+
+```
+
+```{r}
+#Box whisker plots
+plot1 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness, colour = favourite_movie))
+plot1 +
+  geom_boxplot() +  
+  labs(x = "Gender", y = "Helpfulness") +
+  theme_minimal()
+```
+
+```{r}
+#With extras ie vertical
+plot2 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness))
+plot2 +
+  geom_boxplot() +  
+  labs(x = "Gender", y = "helpfullness") +
+  facet_wrap(~favourite_movie, ncol = 1) +
+  theme_minimal()
+```
+
+```{r}
+#Plotting means
+plot3 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness, colour = favourite_movie))
+plot3 +
+  stat_summary(fun = "mean", geom = "point", size = 4, position = position_dodge(width = 0.9)) +  
+  labs(x = "Gender", y = "Helpfullness", colour = "Favourite Movie") +
+  coord_cartesian(ylim = c(0, 100)) +
+  scale_y_continuous(breaks = seq(0, 100, 10)) +
+  theme_minimal()
+```
+
+```{r}
+#Violon Plots
+plot4 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness, colour = favourite_movie))
+plot4 +
+  stat_summary(fun = "mean", geom = "point", size = 4, position = position_dodge(width = 0.9)) +
+  geom_violin(alpha = 1) +
+  labs(x = "Gender", y = "Helpfulness", colour = "Favourite Movie") +
+  coord_cartesian(ylim = c(0, 100)) +
+  scale_y_continuous(breaks = seq(0, 100, 10)) +
+  theme_minimal()
+```
+
+```{r}
+#Confidence Intervals
+plot5 <- ggplot2::ggplot(fake_data, aes(gender, helpfulness))
+plot5 +
+  stat_summary(fun.data = "mean_cl_boot", geom = "pointrange") +  
+  labs(x = "Gender", y = "Helpfulness") +
+  coord_cartesian(ylim = c(0, 70)) +
+  scale_y_continuous(breaks = seq(0, 70, 10)) +
+  facet_wrap(~favourite_movie) +
+  theme_minimal()
+```
+
+```{r}
+#Scatter plots by group
+plot6 <- ggplot2::ggplot(fake_data, aes(helpfulness, teach_skill))
+plot6 +
+  geom_point(colour = "#56B4E9", alpha = 0.6) +
+  geom_smooth(method = "lm", colour = "#E69F00", fill = "#E69F00") +
+  labs(x = "helpfulness", y = "teaching ablility") +
+  facet_wrap(~gender) +
+  theme_bw()
+```
+
+```{r}
+#Joint scatter plot
+plot7 <- ggplot2::ggplot(fake_data, aes(helpfulness, teach_skill, colour = gender, fill = gender))
+plot7 +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm") +
+  coord_cartesian(ylim = c(0, 140)) +
+  scale_y_continuous(breaks = seq(0, 140, 10)) +
+  labs(x = "Helpfulness", y = "Teaching Ability") +
+  theme_bw()
+```

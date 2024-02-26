@@ -1,0 +1,81 @@
+---
+title: "Quarto Workshops"
+author: "218252"
+format: 
+  html:
+    self-contained: true
+    theme: united
+    code-fold: false
+    toc: true
+editor: visual
+---
+
+# Quarto Workshop Practice
+
+```{r}
+library(readr)
+
+eddie_tib <- here::here("data/eddiefy.csv") |> readr::read_csv()
+```
+
+```{r}
+lm1 <- lm(danceability~ energy + loudness, data = eddie_tib)
+broom::tidy(lm1)
+
+lm2 <- lm(danceability~ speechiness + instrumentalness, data = eddie_tib)
+broom::tidy(lm2)
+
+lm3 <- lm(danceability~ year, data = eddie_tib)
+broom::tidy(lm3)
+```
+
+```{r}
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(broom)
+
+#Convert scenario to factor
+eddie_tib$yearfac <- as.factor(eddie_tib$year)
+
+aov1 <- eddie_tib |> anova_test(danceability ~ yearfac + energy)
+get_anova_table(aov1)
+
+#Post hoc tests
+# Pairwise comparisons
+library(emmeans)
+pwc <- eddie_tib %>% 
+  emmeans_test(
+    danceability ~ yearfac, covariate = energy,
+    p.adjust.method = "bonferroni"
+    )
+pwc
+```
+
+```{r}
+
+oldyears <- c(1980:1999)
+eddie_tib$age <- ifelse(eddie_tib$year %in% oldyears, "old", "new")
+
+eddie_tib$age <- as.factor(eddie_tib$age)
+
+t.test(danceability~age, data = eddie_tib)
+
+```
+
+```{r}
+library(randomNames)
+
+randomNames(n=6)
+```
+
+```{r}
+here::here("data/eddiefy.csv")
+```
+
+```{r}
+energy_tib <- eddie_tib |> 
+  dplyr::select(track_name, energy, valence)
+label: 'table 1'
+knitr::kable(energy_tib)
+```
